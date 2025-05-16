@@ -46,9 +46,9 @@ class _BottomNavState extends State<BottomNav> {
           });
         },
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Friends'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
+          BottomNavigationBarItem(icon: Icon(Icons.groups_outlined), label: 'Create Group'),
+          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Add Friends'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Create Chats'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Settings'),
         ],
       ),

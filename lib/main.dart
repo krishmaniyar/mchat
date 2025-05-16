@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mchat/pages/bottomnav.dart';
-import 'package:mchat/pages/chats_page.dart';
-import 'package:mchat/pages/chatting_page.dart';
 import 'package:mchat/pages/login_screen.dart';
 
 Future<void> main() async {
@@ -22,7 +19,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Mchat",
-      home: ChattingPage(),
+      home: LoginScreen(),
     );
   }
 }

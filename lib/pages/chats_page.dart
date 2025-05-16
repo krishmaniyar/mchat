@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mchat/pages/chatting_page.dart';
 
 class ChatsPage extends StatefulWidget {
   const ChatsPage({super.key});
@@ -131,75 +132,88 @@ class _ChatsPageState extends State<ChatsPage> {
                 ],
               ),
               SizedBox(height: 20.0,),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.blue.shade500, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "M",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
+              GestureDetector(
+                onTap: () => {
+                  setState(() {
+                    Navigator.pop(
+                    context,
+                    );
+                    Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ChattingPage()),
+                    );
+                  })
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: Colors.blue.shade500, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: Colors.blue[200],
+                            child: Text(
+                              "M",
+                              style: TextStyle(
+                                color: Colors.blue[800],
+                                fontSize: normalFontSize,
+                              ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(7.5),
-                            decoration: BoxDecoration(
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(7.5),
+                              decoration: BoxDecoration(
                                 border: Border.all(
-                                    width: 2,
-                                    color: Colors.white
+                                  width: 2,
+                                  color: Colors.white
                                 ),
                                 borderRadius: BorderRadius.circular(90.0),
                                 color: Colors.green,
+                              )
                             )
-                          )
-                        )
-                      ],
-                    ),
-                    SizedBox(width: 10,),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Mehul",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "hi",
-                            style: TextStyle(
-                              fontSize: normalFontSize-3,
-                            ),
                           )
                         ],
                       ),
-                    ),
-                    SizedBox(width: 10,),
-                    Text(
-                      "5/15/2025 11:05:11 AM",
-                      style: TextStyle(
-                        fontSize: normalFontSize-8,
-                        color: greyColor,
+                      SizedBox(width: 10,),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Mehul",
+                              style: TextStyle(
+                                fontSize: normalFontSize,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              "hi",
+                              style: TextStyle(
+                                fontSize: normalFontSize-3,
+                              ),
+                            )
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 10,),
+                      Text(
+                        "5/15/2025 11:05:11 AM",
+                        style: TextStyle(
+                          fontSize: normalFontSize-8,
+                          color: greyColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               SizedBox(height: 15,),
