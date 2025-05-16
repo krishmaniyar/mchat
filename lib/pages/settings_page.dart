@@ -8,21 +8,40 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-
-  double boldFontSize = 30.0;
-  double normalFontSize = 20.0;
-  Color? greyColor = Colors.grey[700];
-  Color? blueColor = Colors.blue[700];
-
   final TextEditingController searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final boldFontSize = screenHeight * 0.035;
+    final normalFontSize = screenHeight * 0.025;
+    final smallFontSize = screenHeight * 0.02;
+
+    final greyColor = Colors.grey[700];
+    final blueColor = Colors.blue[700];
+
+    final horizontalPadding = screenWidth * 0.05;
+    final verticalPaddingSmall = screenHeight * 0.0125;
+    final verticalPaddingMedium = screenHeight * 0.01875;
+    final verticalPaddingLarge = screenHeight * 0.025;
+
+    final avatarRadius = screenWidth * 0.06;
+    final containerPaddingVertical = screenHeight * 0.01875;
+    final containerPaddingHorizontal = screenWidth * 0.05;
+    final containerBorderRadius = screenWidth * 0.035;
+    final statusIndicatorSize = screenWidth * 0.035;
+    final buttonBorderRadius = screenWidth * 0.025;
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 20.0),
+          padding: EdgeInsets.symmetric(
+            vertical: 0.0,
+            horizontal: horizontalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -33,45 +52,54 @@ class _SettingsPageState extends State<SettingsPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 10.0,),
-              Divider(),
-              SizedBox(height: 15.0,),
-              TextField(
-                controller: searchController,
-                keyboardType: TextInputType.text,
-                style: TextStyle(
-                  fontSize: normalFontSize,
-                ),
-                decoration: InputDecoration(
-                  suffixIcon: Icon(Icons.search),
-                  hintText: "Search settings",
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[300],
-                ),
-              ),
-              SizedBox(height: 20.0,),
+              SizedBox(height: verticalPaddingSmall),
+              const Divider(),
+              // SizedBox(height: verticalPaddingMedium),
+              // TextField(
+              //   controller: searchController,
+              //   keyboardType: TextInputType.text,
+              //   style: TextStyle(
+              //     fontSize: normalFontSize,
+              //   ),
+              //   decoration: InputDecoration(
+              //     suffixIcon: Icon(Icons.search),
+              //     hintText: "Search settings",
+              //     contentPadding: EdgeInsets.symmetric(
+              //       vertical: screenHeight * 0.02,
+              //       horizontal: screenWidth * 0.0375,
+              //     ),
+              //     focusedBorder: OutlineInputBorder(
+              //       borderSide: const BorderSide(color: Colors.white),
+              //       borderRadius: BorderRadius.circular(containerBorderRadius),
+              //     ),
+              //     enabledBorder: UnderlineInputBorder(
+              //       borderSide: const BorderSide(color: Colors.white),
+              //       borderRadius: BorderRadius.circular(containerBorderRadius),
+              //     ),
+              //     filled: true,
+              //     fillColor: Colors.grey[300],
+              //   ),
+              // ),
+              SizedBox(height: verticalPaddingLarge),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.grey.shade500, width: 1),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
+                  border: Border.all(
+                    color: Colors.grey.shade500,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.green[200],
                           child: Text(
                             "M",
@@ -85,20 +113,20 @@ class _SettingsPageState extends State<SettingsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
                                   width: 2,
                                   color: Colors.white
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.green,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,20 +141,20 @@ class _SettingsPageState extends State<SettingsPage> {
                           Text(
                             "test@gmail.com",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
                     IconButton(
-                      onPressed: () => {}, 
+                      onPressed: () {},
                       icon: Icon(Icons.logout_outlined),
-                    )
+                    ),
                   ],
                 ),
               ),
-              SizedBox(height: 10,),
+              SizedBox(height: verticalPaddingSmall),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -134,104 +162,110 @@ class _SettingsPageState extends State<SettingsPage> {
                     "Chat Activity",
                     style: TextStyle(
                       color: greyColor,
+                      fontSize: normalFontSize,
                     ),
                   ),
                   TextButton(
-                    onPressed: () => {},
+                    onPressed: () {},
                     child: Text(
                       "Delete from all devices",
                       style: TextStyle(
                         color: greyColor,
+                        fontSize: smallFontSize,
                       ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 10,),
+              SizedBox(height: verticalPaddingSmall),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+                padding: EdgeInsets.symmetric(
+                  vertical: verticalPaddingLarge,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: Column(
                   children: [
                     ElevatedButton(
                       style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all<Color>(Colors.red!),
+                        backgroundColor: WidgetStateProperty.all<Color>(Colors.red),
                         shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                           RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
+                            borderRadius: BorderRadius.circular(buttonBorderRadius),
                           ),
                         ),
                       ),
-                      onPressed: () => {},
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.delete_outlined,
-                                color: Colors.white,
-                                size: normalFontSize+3,
-                              ),
-                              SizedBox(width: 5,),
-                              Text(
-                                "Delete All Chat",
-                                style: TextStyle(
-                                  fontSize: normalFontSize,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              )
-                            ],
-                          )
+                      onPressed: () {},
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: verticalPaddingMedium,
                         ),
-                      )
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_outlined,
+                              color: Colors.white,
+                              size: normalFontSize - 3,
+                            ),
+                            SizedBox(width: screenWidth * 0.0125),
+                            Text(
+                              "Delete All Chat",
+                              style: TextStyle(
+                                fontSize: normalFontSize-3,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    SizedBox(height: 15,),
-                    Divider(),
-                    SizedBox(height: 15,),
+                    SizedBox(height: verticalPaddingMedium),
+                    const Divider(),
+                    SizedBox(height: verticalPaddingMedium),
                     ElevatedButton(
                       style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all<Color>(Colors.red!),
+                        backgroundColor: WidgetStateProperty.all<Color>(Colors.red),
                         shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                           RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
+                            borderRadius: BorderRadius.circular(buttonBorderRadius),
                           ),
                         ),
                       ),
-                      onPressed: () => {},
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.delete_outlined,
-                                color: Colors.white,
-                                size: normalFontSize+3,
-                              ),
-                              SizedBox(width: 5,),
-                              Text(
-                                "Delete All Chat With Star",
-                                style: TextStyle(
-                                  fontSize: normalFontSize,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              )
-                            ],
-                          )
+                      onPressed: () {},
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: verticalPaddingMedium,
                         ),
-                      )
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_outlined,
+                              color: Colors.white,
+                              size: normalFontSize-3,
+                            ),
+                            SizedBox(width: screenWidth * 0.0125),
+                            Text(
+                              "Delete All Chat With Star",
+                              style: TextStyle(
+                                fontSize: normalFontSize-3,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
+              SizedBox(height: verticalPaddingLarge),
             ],
           ),
         ),

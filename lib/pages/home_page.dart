@@ -8,24 +8,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
-  double boldFontSize = 30.0;
-  double normalFontSize = 20.0;
-  Color? greyColor = Colors.grey[700];
-  Color? blueColor = Colors.blue[700];
-
   late var rememberMe = false;
-
   final TextEditingController searchController = TextEditingController();
   final TextEditingController groupController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final boldFontSize = screenHeight * 0.035;
+    final normalFontSize = screenHeight * 0.025;
+    final smallFontSize = screenHeight * 0.02;
+
+    final greyColor = Colors.grey[700];
+    final blueColor = Colors.blue[700];
+
+    final horizontalPadding = screenWidth * 0.05;
+    final verticalPaddingSmall = screenHeight * 0.0125;
+    final verticalPaddingMedium = screenHeight * 0.01875;
+    final verticalPaddingLarge = screenHeight * 0.025;
+
+    final avatarRadius = screenWidth * 0.06;
+    final containerPaddingVertical = screenHeight * 0.01875;
+    final containerPaddingHorizontal = screenWidth * 0.05;
+    final containerBorderRadius = screenWidth * 0.035;
+    final statusIndicatorSize = screenWidth * 0.035;
+    final buttonBorderRadius = screenWidth * 0.025;
+    final toggleButtonRadius = screenWidth * 0.0875;
+    final toggleButtonInnerRadius = screenWidth * 0.075;
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 20.0),
+          padding: EdgeInsets.symmetric(
+            vertical: 0.0,
+            horizontal: horizontalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -36,56 +56,59 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 10.0,),
-              Divider(),
-              SizedBox(height: 15,),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(5.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(35.0),
-                    ),
-                    child: Row(
-                      children: [
-                        TextButton(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all<Color>(Colors.white),
-                            shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                            ),
-                          ),
-                          onPressed: () => {
-                            setState(() {
-                            }),
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-                            child: Text(
-                              "Group",
-                              style: TextStyle(
-                                fontSize: normalFontSize,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-              SizedBox(height: 20.0,),
+              SizedBox(height: verticalPaddingSmall),
+              const Divider(),
+              // SizedBox(height: verticalPaddingMedium),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     Container(
+              //       padding: EdgeInsets.all(screenWidth * 0.0125),
+              //       decoration: BoxDecoration(
+              //         color: Colors.grey[300],
+              //         borderRadius: BorderRadius.circular(toggleButtonRadius),
+              //       ),
+              //       child: Row(
+              //         children: [
+              //           TextButton(
+              //             style: ButtonStyle(
+              //               backgroundColor: WidgetStateProperty.all<Color>(Colors.white),
+              //               shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+              //                 RoundedRectangleBorder(
+              //                   borderRadius: BorderRadius.circular(toggleButtonInnerRadius),
+              //                 ),
+              //               ),
+              //             ),
+              //             onPressed: () {},
+              //             child: Padding(
+              //               padding: EdgeInsets.symmetric(
+              //                 vertical: screenHeight * 0.00625,
+              //                 horizontal: screenWidth * 0.05,
+              //               ),
+              //               child: Text(
+              //                 "Group",
+              //                 style: TextStyle(
+              //                   fontSize: normalFontSize,
+              //                   fontWeight: FontWeight.w400,
+              //                   color: greyColor,
+              //                 ),
+              //               ),
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              SizedBox(height: verticalPaddingLarge),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenHeight * 0.025,
+                  horizontal: screenWidth * 0.0375,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: TextField(
                   controller: groupController,
@@ -95,25 +118,29 @@ class _HomePageState extends State<HomePage> {
                   ),
                   decoration: InputDecoration(
                     hintText: "Group Name",
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: screenHeight * 0.02,
+                      horizontal: screenWidth * 0.0375,
+                    ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(containerBorderRadius),
                     ),
                     enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(containerBorderRadius),
                     ),
                     filled: true,
                     fillColor: Colors.grey[300],
                   ),
                 ),
               ),
-              SizedBox(height: 20.0,),
+              SizedBox(height: verticalPaddingLarge),
               Text(
-                "Select Member"
+                "Select Member",
+                style: TextStyle(fontSize: normalFontSize),
               ),
-              SizedBox(height: 10.0,),
+              SizedBox(height: verticalPaddingSmall),
               TextField(
                 controller: searchController,
                 keyboardType: TextInputType.text,
@@ -123,260 +150,285 @@ class _HomePageState extends State<HomePage> {
                 decoration: InputDecoration(
                   suffixIcon: Icon(Icons.search),
                   hintText: "Select Member",
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: screenHeight * 0.02,
+                    horizontal: screenWidth * 0.0375,
+                  ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(containerBorderRadius),
                   ),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(containerBorderRadius),
                   ),
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
               ),
-              SizedBox(height: 20.0,),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.blue.shade500, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "M",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
+              SizedBox(height: verticalPaddingMedium),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: containerPaddingVertical,
+                          horizontal: containerPaddingHorizontal,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(containerBorderRadius),
+                          border: Border.all(
+                            color: Colors.blue.shade500,
+                            width: 2,
                           ),
                         ),
-                        Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                                padding: EdgeInsets.all(7.5),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                      width: 2,
-                                      color: Colors.white
+                        child: Row(
+                          children: [
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: avatarRadius,
+                                  backgroundColor: Colors.blue[200],
+                                  child: Text(
+                                    "M",
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontSize: normalFontSize,
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(90.0),
-                                  color: Colors.green,
-                                )
-                            )
-                        )
-                      ],
-                    ),
-                    SizedBox(width: 10,),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Mehul",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        width: 2,
+                                        color: Colors.white,
+                                      ),
+                                      borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Text(
-                            "online",
-                            style: TextStyle(
-                              fontSize: normalFontSize-3,
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    Checkbox(
-                      value: rememberMe,
-                      onChanged: (value) {
-                        setState(() {
-                          rememberMe = value!;
-                        });
-                      }
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 15,),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "S",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(7.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white
+                            SizedBox(width: screenWidth * 0.025),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Mehul",
+                                    style: TextStyle(
+                                      fontSize: normalFontSize,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    "online",
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
-                              color: Colors.red,
-                            )
-                          )
-                        )
-                      ],
-                    ),
-                    SizedBox(width: 10,),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "SHM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                          Text(
-                            "offline",
-                            style: TextStyle(
-                              fontSize: normalFontSize-3,
+                            Checkbox(
+                              value: rememberMe,
+                              onChanged: (value) {
+                                setState(() {
+                                  rememberMe = value!;
+                                });
+                              },
                             ),
-                          )
-                        ],
-                      ),
-                    ),
-                    Checkbox(
-                      value: rememberMe,
-                      onChanged: (value) {
-                        setState(() {
-                          rememberMe = value!;
-                        });
-                      }
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 15,),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "A",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
+                          ],
                         ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(7.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
-                              ),
-                              borderRadius: BorderRadius.circular(90.0),
-                              color: Colors.red,
-                            )
-                          )
-                        )
-                      ],
-                    ),
-                    SizedBox(width: 10,),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "ASM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "offline",
-                            style: TextStyle(
-                              fontSize: normalFontSize-3,
-                            ),
-                          )
-                        ],
                       ),
-                    ),
-                    Checkbox(
-                      value: rememberMe,
-                      onChanged: (value) {
-                        setState(() {
-                          rememberMe = value!;
-                        });
-                      }
-                    ),
-                  ],
+                      SizedBox(height: verticalPaddingMedium),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: containerPaddingVertical,
+                          horizontal: containerPaddingHorizontal,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(containerBorderRadius),
+                        ),
+                        child: Row(
+                          children: [
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: avatarRadius,
+                                  backgroundColor: Colors.blue[200],
+                                  child: Text(
+                                    "S",
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontSize: normalFontSize,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        width: 2,
+                                        color: Colors.white,
+                                      ),
+                                      borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(width: screenWidth * 0.025),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "SHM",
+                                    style: TextStyle(
+                                      fontSize: normalFontSize,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    "offline",
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Checkbox(
+                              value: rememberMe,
+                              onChanged: (value) {
+                                setState(() {
+                                  rememberMe = value!;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: verticalPaddingMedium),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: containerPaddingVertical,
+                          horizontal: containerPaddingHorizontal,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(containerBorderRadius),
+                        ),
+                        child: Row(
+                          children: [
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: avatarRadius,
+                                  backgroundColor: Colors.blue[200],
+                                  child: Text(
+                                    "A",
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontSize: normalFontSize,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        width: 2,
+                                        color: Colors.white,
+                                      ),
+                                      borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(width: screenWidth * 0.025),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "ASM",
+                                    style: TextStyle(
+                                      fontSize: normalFontSize,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    "offline",
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Checkbox(
+                              value: rememberMe,
+                              onChanged: (value) {
+                                setState(() {
+                                  rememberMe = value!;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              SizedBox(height: 20,),
+              SizedBox(height: verticalPaddingMedium),
               ElevatedButton(
                 style: ButtonStyle(
                   backgroundColor: WidgetStateProperty.all<Color>(blueColor!),
                   shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                     RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
+                      borderRadius: BorderRadius.circular(buttonBorderRadius),
                     ),
                   ),
                 ),
-                onPressed: () => {},
+                onPressed: () {},
                 child: Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    padding: EdgeInsets.symmetric(
+                      vertical: screenHeight * 0.0125,
+                      horizontal: screenWidth * 0.0375,
+                    ),
                     child: Text(
                       "Create Group",
                       style: TextStyle(
-                        fontSize: boldFontSize-3,
+                        fontSize: boldFontSize - 3,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                )
+                ),
               ),
+              SizedBox(height: verticalPaddingMedium),
             ],
           ),
         ),

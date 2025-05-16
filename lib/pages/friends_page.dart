@@ -8,21 +8,40 @@ class FriendsPage extends StatefulWidget {
 }
 
 class _FriendsPageState extends State<FriendsPage> {
-
-  double boldFontSize = 30.0;
-  double normalFontSize = 20.0;
-  Color? greyColor = Colors.grey[700];
-  Color? blueColor = Colors.blue[700];
-
   final TextEditingController searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final boldFontSize = screenHeight * 0.035;
+    final normalFontSize = screenHeight * 0.025;
+    final smallFontSize = screenHeight * 0.02;
+
+    final greyColor = Colors.grey[700];
+    final blueColor = Colors.blue[700];
+
+    final horizontalPadding = screenWidth * 0.05;
+    final verticalPaddingSmall = screenHeight * 0.0125;
+    final verticalPaddingMedium = screenHeight * 0.01875;
+    final verticalPaddingLarge = screenHeight * 0.025;
+
+    final avatarRadius = screenWidth * 0.06;
+    final containerPaddingVertical = screenHeight * 0.01875;
+    final containerPaddingHorizontal = screenWidth * 0.05;
+    final containerBorderRadius = screenWidth * 0.035;
+    final statusIndicatorSize = screenWidth * 0.035;
+    final buttonBorderRadius = screenWidth * 0.025;
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 20.0),
+          padding: EdgeInsets.symmetric(
+            vertical: 0.0,
+            horizontal: horizontalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -33,9 +52,9 @@ class _FriendsPageState extends State<FriendsPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 10.0,),
-              Divider(),
-              SizedBox(height: 15.0,),
+              SizedBox(height: verticalPaddingSmall),
+              const Divider(),
+              SizedBox(height: verticalPaddingMedium),
               TextField(
                 controller: searchController,
                 keyboardType: TextInputType.text,
@@ -45,25 +64,31 @@ class _FriendsPageState extends State<FriendsPage> {
                 decoration: InputDecoration(
                   suffixIcon: Icon(Icons.search),
                   hintText: "Search user",
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: screenHeight * 0.02,
+                    horizontal: screenWidth * 0.0375,
+                  ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
                   ),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
                   ),
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
               ),
-              SizedBox(height: 20.0,),
+              SizedBox(height: verticalPaddingLarge),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                   border: Border.all(color: Colors.blue.shade500, width: 2),
                 ),
                 child: Row(
@@ -71,7 +96,7 @@ class _FriendsPageState extends State<FriendsPage> {
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.blue[200],
                           child: Text(
                             "M",
@@ -85,20 +110,20 @@ class _FriendsPageState extends State<FriendsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
+                                width: 2,
+                                color: Colors.white,
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.green,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,9 +138,9 @@ class _FriendsPageState extends State<FriendsPage> {
                           Text(
                             "online",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -126,65 +151,62 @@ class _FriendsPageState extends State<FriendsPage> {
                           value: 1,
                           child: Row(
                             children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Start Chat", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.chat_outlined, color: greyColor),
                             ],
                           ),
                         ),
                         PopupMenuItem(
                           value: 2,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Edit Contact", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.edit_outlined, color: greyColor),
                             ],
                           ),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 3,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Delete user", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Delete user", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.block_flipped, color: greyColor),
                             ],
                           ),
                         ),
                       ],
-                      offset: Offset(0, 40),
+                      offset: Offset(0, screenHeight * 0.05),
                       color: Colors.white,
                       elevation: 2,
                       onSelected: (value) {
-                        if (value == 1) {
-                        }
-                        else if (value == 2) {
-                        }
-                        else if (value == 3) {
-                        }
+                        if (value == 1) {}
+                        else if (value == 2) {}
+                        else if (value == 3) {}
                       },
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 15,),
+              SizedBox(height: verticalPaddingMedium),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: Row(
                   children: [
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.blue[200],
                           child: Text(
                             "S",
@@ -198,20 +220,20 @@ class _FriendsPageState extends State<FriendsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
+                                width: 2,
+                                color: Colors.white,
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.red,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,9 +248,9 @@ class _FriendsPageState extends State<FriendsPage> {
                           Text(
                             "offline",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -239,65 +261,62 @@ class _FriendsPageState extends State<FriendsPage> {
                           value: 1,
                           child: Row(
                             children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Start Chat", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.chat_outlined, color: greyColor),
                             ],
                           ),
                         ),
                         PopupMenuItem(
                           value: 2,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Edit Contact", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.edit_outlined, color: greyColor),
                             ],
                           ),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 3,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Delete user", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Delete user", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.block_flipped, color: greyColor),
                             ],
                           ),
                         ),
                       ],
-                      offset: Offset(0, 40),
+                      offset: Offset(0, screenHeight * 0.05),
                       color: Colors.white,
                       elevation: 2,
                       onSelected: (value) {
-                        if (value == 1) {
-                        }
-                        else if (value == 2) {
-                        }
-                        else if (value == 3) {
-                        }
+                        if (value == 1) {}
+                        else if (value == 2) {}
+                        else if (value == 3) {}
                       },
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 15,),
+              SizedBox(height: verticalPaddingMedium),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: Row(
                   children: [
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.blue[200],
                           child: Text(
                             "A",
@@ -311,20 +330,20 @@ class _FriendsPageState extends State<FriendsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
+                                width: 2,
+                                color: Colors.white,
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.red,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,9 +358,9 @@ class _FriendsPageState extends State<FriendsPage> {
                           Text(
                             "offline",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -352,75 +371,73 @@ class _FriendsPageState extends State<FriendsPage> {
                           value: 1,
                           child: Row(
                             children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Start Chat", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.chat_outlined, color: greyColor),
                             ],
                           ),
                         ),
                         PopupMenuItem(
                           value: 2,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Edit Contact", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.edit_outlined, color: greyColor),
                             ],
                           ),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 3,
-                          // row with two children
                           child: Row(
                             children: [
-                              Text("Delete user", style: TextStyle(color: greyColor),),
-                              SizedBox(width: 20,),
+                              Text("Delete user", style: TextStyle(color: greyColor)),
+                              SizedBox(width: screenWidth * 0.05),
                               Icon(Icons.block_flipped, color: greyColor),
                             ],
                           ),
                         ),
                       ],
-                      offset: Offset(0, 40),
+                      offset: Offset(0, screenHeight * 0.05),
                       color: Colors.white,
                       elevation: 2,
                       onSelected: (value) {
-                        if (value == 1) {
-                        }
-                        else if (value == 2) {
-                        }
-                        else if (value == 3) {
-                        }
+                        if (value == 1) {}
+                        else if (value == 2) {}
+                        else if (value == 3) {}
                       },
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 20,),
+              SizedBox(height: verticalPaddingLarge),
               ElevatedButton(
                 style: ButtonStyle(
                   backgroundColor: WidgetStateProperty.all<Color>(blueColor!),
                   shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                     RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
+                      borderRadius: BorderRadius.circular(buttonBorderRadius),
                     ),
                   ),
                 ),
-                onPressed: () => {},
+                onPressed: () {},
                 child: Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    padding: EdgeInsets.symmetric(
+                      vertical: screenHeight * 0.0125,
+                      horizontal: screenWidth * 0.0375,
+                    ),
                     child: Text(
                       "Add Friends",
                       style: TextStyle(
-                        fontSize: boldFontSize-3,
+                        fontSize: boldFontSize - 3,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                )
+                ),
               ),
             ],
           ),

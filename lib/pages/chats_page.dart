@@ -9,23 +9,40 @@ class ChatsPage extends StatefulWidget {
 }
 
 class _ChatsPageState extends State<ChatsPage> {
-
-  double boldFontSize = 30.0;
-  double normalFontSize = 20.0;
-  Color? greyColor = Colors.grey[700];
-  Color? blueColor = Colors.blue[700];
-
   bool isDirect = true;
-
   final TextEditingController searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final boldFontSize = screenHeight * 0.035;
+    final normalFontSize = screenHeight * 0.025;
+    final smallFontSize = screenHeight * 0.02;
+    final tinyFontSize = screenHeight * 0.015;
+
+    final greyColor = Colors.grey[700];
+
+    final horizontalPadding = screenWidth * 0.05;
+    final verticalPaddingSmall = screenHeight * 0.0125;
+    final verticalPaddingMedium = screenHeight * 0.01875;
+    final verticalPaddingLarge = screenHeight * 0.025;
+
+    final avatarRadius = screenWidth * 0.06;
+    final containerPaddingVertical = screenHeight * 0.01875;
+    final containerPaddingHorizontal = screenWidth * 0.05;
+    final containerBorderRadius = screenWidth * 0.035;
+    final statusIndicatorSize = screenWidth * 0.035;
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 20.0),
+          padding: EdgeInsets.symmetric(
+            vertical: 0.0,
+            horizontal: horizontalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -36,9 +53,9 @@ class _ChatsPageState extends State<ChatsPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 10.0,),
-              Divider(),
-              SizedBox(height: 15.0,),
+              SizedBox(height: verticalPaddingSmall),
+              const Divider(),
+              SizedBox(height: verticalPaddingMedium),
               TextField(
                 controller: searchController,
                 keyboardType: TextInputType.text,
@@ -48,28 +65,31 @@ class _ChatsPageState extends State<ChatsPage> {
                 decoration: InputDecoration(
                   suffixIcon: Icon(Icons.search),
                   hintText: "Search user",
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: screenHeight * 0.02,
+                    horizontal: screenWidth * 0.0375,
+                  ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
                   ),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
                   ),
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
               ),
-              SizedBox(height: 15,),
+              SizedBox(height: verticalPaddingMedium),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: EdgeInsets.all(5.0),
+                    padding: EdgeInsets.all(screenWidth * 0.0125),
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(35.0),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.0875),
                     ),
                     child: Row(
                       children: [
@@ -78,7 +98,7 @@ class _ChatsPageState extends State<ChatsPage> {
                             backgroundColor: WidgetStateProperty.all<Color>((isDirect ? Colors.white : Colors.grey[300])!),
                             shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                               RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
+                                borderRadius: BorderRadius.circular(screenWidth * 0.075),
                               ),
                             ),
                           ),
@@ -88,7 +108,10 @@ class _ChatsPageState extends State<ChatsPage> {
                             }),
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.00625,
+                              horizontal: screenWidth * 0.025,
+                            ),
                             child: Text(
                               "Direct",
                               style: TextStyle(
@@ -99,13 +122,13 @@ class _ChatsPageState extends State<ChatsPage> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 10,),
+                        SizedBox(width: screenWidth * 0.025),
                         TextButton(
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all<Color>((!isDirect ? Colors.white : Colors.grey[300])!),
                             shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                               RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
+                                borderRadius: BorderRadius.circular(screenWidth * 0.075),
                               ),
                             ),
                           ),
@@ -115,7 +138,10 @@ class _ChatsPageState extends State<ChatsPage> {
                             }),
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.00625,
+                              horizontal: screenWidth * 0.025,
+                            ),
                             child: Text(
                               "Groups",
                               style: TextStyle(
@@ -131,32 +157,34 @@ class _ChatsPageState extends State<ChatsPage> {
                   )
                 ],
               ),
-              SizedBox(height: 20.0,),
+              SizedBox(height: verticalPaddingLarge),
               GestureDetector(
                 onTap: () => {
-                  setState(() {
-                    Navigator.pop(
-                    context,
-                    );
-                    Navigator.push(
+                  Navigator.pop(context),
+                  Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ChattingPage()),
-                    );
-                  })
+                  ),
                 },
                 child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                  padding: EdgeInsets.symmetric(
+                    vertical: containerPaddingVertical,
+                    horizontal: containerPaddingHorizontal,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.blue.shade500, width: 2),
+                    borderRadius: BorderRadius.circular(containerBorderRadius),
+                    border: Border.all(
+                      color: Colors.blue.shade500,
+                      width: 2,
+                    ),
                   ),
                   child: Row(
                     children: [
                       Stack(
                         children: [
                           CircleAvatar(
-                            radius: 25,
+                            radius: avatarRadius,
                             backgroundColor: Colors.blue[200],
                             child: Text(
                               "M",
@@ -170,20 +198,20 @@ class _ChatsPageState extends State<ChatsPage> {
                             right: 0,
                             bottom: 0,
                             child: Container(
-                              padding: EdgeInsets.all(7.5),
+                              padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                   width: 2,
-                                  color: Colors.white
+                                  color: Colors.white,
                                 ),
-                                borderRadius: BorderRadius.circular(90.0),
+                                borderRadius: BorderRadius.circular(statusIndicatorSize),
                                 color: Colors.green,
-                              )
-                            )
-                          )
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      SizedBox(width: 10,),
+                      SizedBox(width: screenWidth * 0.025),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,17 +226,17 @@ class _ChatsPageState extends State<ChatsPage> {
                             Text(
                               "hi",
                               style: TextStyle(
-                                fontSize: normalFontSize-3,
+                                fontSize: smallFontSize,
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
-                      SizedBox(width: 10,),
+                      SizedBox(width: screenWidth * 0.025),
                       Text(
                         "5/15/2025 11:05:11 AM",
                         style: TextStyle(
-                          fontSize: normalFontSize-8,
+                          fontSize: tinyFontSize,
                           color: greyColor,
                         ),
                       ),
@@ -216,20 +244,22 @@ class _ChatsPageState extends State<ChatsPage> {
                   ),
                 ),
               ),
-              SizedBox(height: 15,),
+              SizedBox(height: verticalPaddingMedium),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: Row(
                   children: [
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.blue[200],
                           child: Text(
                             "S",
@@ -243,20 +273,20 @@ class _ChatsPageState extends State<ChatsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
+                                width: 2,
+                                color: Colors.white,
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.red,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,37 +301,31 @@ class _ChatsPageState extends State<ChatsPage> {
                           Text(
                             "",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
-                    SizedBox(width: 10,),
-                    // Text(
-                    //   "5/15/2025 11:05:11 AM",
-                    //   style: TextStyle(
-                    //     fontSize: normalFontSize-8,
-                    //     color: greyColor,
-                    //   ),
-                    // ),
                   ],
                 ),
               ),
-              SizedBox(height: 15,),
+              SizedBox(height: verticalPaddingMedium),
               Container(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                  vertical: containerPaddingVertical,
+                  horizontal: containerPaddingHorizontal,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  // border: Border.all(color: Colors.blue.shade500, width: 2),
+                  borderRadius: BorderRadius.circular(containerBorderRadius),
                 ),
                 child: Row(
                   children: [
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 25,
+                          radius: avatarRadius,
                           backgroundColor: Colors.blue[200],
                           child: Text(
                             "A",
@@ -315,20 +339,20 @@ class _ChatsPageState extends State<ChatsPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(7.5),
+                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  width: 2,
-                                  color: Colors.white
+                                width: 2,
+                                color: Colors.white,
                               ),
-                              borderRadius: BorderRadius.circular(90.0),
+                              borderRadius: BorderRadius.circular(statusIndicatorSize),
                               color: Colors.red,
-                            )
-                          )
-                        )
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(width: screenWidth * 0.025),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,20 +367,12 @@ class _ChatsPageState extends State<ChatsPage> {
                           Text(
                             "",
                             style: TextStyle(
-                              fontSize: normalFontSize-3,
+                              fontSize: smallFontSize,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
-                    SizedBox(width: 10,),
-                    // Text(
-                    //   "5/15/2025 11:05:11 AM",
-                    //   style: TextStyle(
-                    //     fontSize: normalFontSize-8,
-                    //     color: greyColor,
-                    //   ),
-                    // ),
                   ],
                 ),
               ),
