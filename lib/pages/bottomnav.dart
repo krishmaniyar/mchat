@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mchat/pages/chats_page.dart';
 import 'package:mchat/pages/friends_page.dart';
-import 'package:mchat/pages/home_page.dart';
+import 'package:mchat/pages/create_group_page.dart';
 import 'package:mchat/pages/settings_page.dart';
 
 class BottomNav extends StatefulWidget {
@@ -16,18 +16,18 @@ class _BottomNavState extends State<BottomNav> {
   int currentTabIndex = 2;
 
   late List pages;
-  late HomePage home;
+  late CreateGroupPage createGroupPage;
   late FriendsPage friends;
   late ChatsPage chats;
   late SettingsPage settings;
   late Widget currentPage;
 
   void initState() {
-    home = HomePage();
+    createGroupPage = CreateGroupPage();
     friends = FriendsPage();
     chats = ChatsPage();
     settings = SettingsPage();
-    pages = [home, friends, chats, settings];
+    pages = [createGroupPage, friends, chats, settings];
     currentPage = ChatsPage();
     super.initState();
   }

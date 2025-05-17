@@ -1,10 +1,25 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import 'bottomnav.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import '../models/json_handler.dart';
+import '../models/auth_handler.dart';
 
 class ChattingPage extends StatefulWidget {
-  const ChattingPage({super.key});
+  final String contactName;
+  final bool isGroup;
+
+  const ChattingPage({
+    super.key,
+    required this.contactName,
+    this.isGroup = false
+  });
 
   @override
   State<ChattingPage> createState() => _ChattingPageState();
@@ -30,8 +45,299 @@ class _ChattingPageState extends State<ChattingPage> {
   ];
 
   String selectedOption = 'Off';
-
   final TextEditingController messageController = TextEditingController();
+  List<Message> messages = [];
+  Timer? _expirationTimer;
+  bool _showAttachmentPanel = false;
+  List<PlatformFile> _selectedFiles = [];
+  final Dio _dio = Dio();
+  String? currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+    _loadMessages();
+    _startExpirationTimer();
+    FlutterDownloader.initialize(debug: true);
+  }
+
+  Future<void> _loadCurrentUser() async {
+    currentUser = await AuthHandler.getCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    _expirationTimer?.cancel();
+    _dio.close();
+    super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    final loadedMessages = await JsonHandler.readMessages(
+        groupName: widget.isGroup ? widget.contactName : null
+    );
+    setState(() {
+      messages = loadedMessages;
+    });
+  }
+
+  void _startExpirationTimer() {
+    _expirationTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+      await _checkForExpiredMessages();
+    });
+  }
+
+  Future<void> _checkForExpiredMessages() async {
+    final currentMessages = await JsonHandler.readMessages(
+        groupName: widget.isGroup ? widget.contactName : null
+    );
+    if (mounted) {
+      setState(() {
+        messages = currentMessages;
+      });
+    }
+  }
+
+  Duration? _getDurationFromOption(String option) {
+    switch (option) {
+      case '1 Minute': return Duration(minutes: 1);
+      case '5 Minute': return Duration(minutes: 5);
+      case '1 Hour': return Duration(hours: 1);
+      case '8 Hour': return Duration(hours: 8);
+      case '12 Hour': return Duration(hours: 12);
+      case '1 Day': return Duration(days: 1);
+      case '1 Week': return Duration(days: 7);
+      case '1 Month': return Duration(days: 30);
+      case '1 Year': return Duration(days: 365);
+      case 'Off':
+      default: return null;
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (messageController.text.trim().isEmpty) return;
+
+    final newMessage = Message(
+      sender: currentUser ?? "You",
+      content: messageController.text,
+      timestamp: DateTime.now(),
+      isSender: true,
+      expiresAfter: _getDurationFromOption(selectedOption),
+    );
+
+    await JsonHandler.addMessage(
+        newMessage,
+        groupName: widget.isGroup ? widget.contactName : null
+    );
+
+    if (mounted) {
+      setState(() {
+        messages.add(newMessage);
+        messageController.clear();
+      });
+    }
+  }
+
+  Future<void> _sendFiles() async {
+    if (_selectedFiles.isEmpty) return;
+
+    for (var file in _selectedFiles) {
+      final newMessage = Message(
+        sender: currentUser ?? "You",
+        content: file.name,
+        timestamp: DateTime.now(),
+        isSender: true,
+        isFile: true,
+        expiresAfter: _getDurationFromOption(selectedOption),
+        fileName: file.name,
+        fileType: path.extension(file.name).replaceFirst('.', ''),
+        fileUrl: 'https://example.com/${file.name}', // Replace with actual URL
+      );
+
+      await JsonHandler.addMessage(
+          newMessage,
+          groupName: widget.isGroup ? widget.contactName : null
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _selectedFiles.clear();
+        _showAttachmentPanel = false;
+        _loadMessages();
+      });
+    }
+  }
+
+  Future<void> _pickFiles() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.any,
+      );
+
+      if (result != null) {
+        setState(() {
+          _selectedFiles.addAll(result.files);
+        });
+      }
+    } catch (e) {
+      debugPrint('File picking error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking files: $e')),
+      );
+    }
+  }
+
+  Future<void> _removeFile(int index) async {
+    setState(() {
+      _selectedFiles.removeAt(index);
+    });
+  }
+
+  Future<void> _deleteMessage(Message message) async {
+    await JsonHandler.deleteMessage(
+        message,
+        groupName: widget.isGroup ? widget.contactName : null
+    );
+    if (mounted) {
+      setState(() {
+        messages.removeWhere((m) =>
+        m.sender == message.sender &&
+            m.content == message.content &&
+            m.timestamp == message.timestamp
+        );
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite(Message message) async {
+    await JsonHandler.toggleFavorite(
+        message,
+        groupName: widget.isGroup ? widget.contactName : null
+    );
+    if (mounted) {
+      await _loadMessages();
+    }
+  }
+
+  Future<void> _downloadFile(Message message) async {
+    try {
+      if (message.fileUrl == null || message.fileUrl!.isEmpty) {
+        throw Exception('No download URL available');
+      }
+
+      // Request storage permission
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+
+        if (status.isPermanentlyDenied) {
+          openAppSettings();
+          throw Exception('Storage permission permanently denied. Please enable it in app settings.');
+        }
+
+        if (!status.isGranted) {
+          throw Exception('Storage permission denied');
+        }
+      } else if (Platform.isIOS) {
+        final status = await Permission.photos.status;
+        if (!status.isGranted) {
+          await Permission.photos.request();
+        }
+      }
+
+      // Get the download directory
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('Cannot access download directory');
+      }
+
+      // Create the file name
+      final fileName = message.fileName ??
+          'file_${DateTime.now().millisecondsSinceEpoch}.${message.fileType ?? 'dat'}';
+      final savePath = path.join(directory.path, fileName);
+
+      // Show download progress
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Downloading $fileName...')),
+      );
+
+      // Download the file
+      await _dio.download(
+        message.fileUrl!,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = (received / total * 100).toStringAsFixed(0);
+            debugPrint('Download progress: $progress%');
+          }
+        },
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('File saved to ${directory.path}/$fileName'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // For Android, notify the media scanner
+      if (Platform.isAndroid) {
+        try {
+          final savedFile = File(savePath);
+          if (await savedFile.exists()) {
+            await FlutterDownloader.registerCallback((id, status, progress) {});
+            await FlutterDownloader.enqueue(
+              url: message.fileUrl!,
+              savedDir: directory.path,
+              fileName: fileName,
+              showNotification: true,
+              openFileFromNotification: true,
+            );
+          }
+        } catch (e) {
+          debugPrint('Media scan error: $e');
+        }
+      }
+
+    } catch (e) {
+      debugPrint('Download error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Download failed: ${e.toString()}'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  IconData _getFileIcon(String fileName) {
+    final ext = path.extension(fileName).toLowerCase();
+    switch (ext) {
+      case '.pdf': return Icons.picture_as_pdf;
+      case '.doc': case '.docx': return Icons.description;
+      case '.xls': case '.xlsx': return Icons.table_chart;
+      case '.jpg': case '.jpeg': case '.png': case '.gif': return Icons.image;
+      case '.mp3': case '.wav': return Icons.audiotrack;
+      case '.mp4': case '.mov': case '.avi': return Icons.videocam;
+      case '.zip': case '.rar': return Icons.archive;
+      default: return Icons.insert_drive_file;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,20 +346,14 @@ class _ChattingPageState extends State<ChattingPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top bar
+            // App Bar
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
               color: Colors.white,
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => BottomNav()),
-                      );
-                    },
+                    onPressed: () => Navigator.pop(context),
                     icon: Icon(CupertinoIcons.back, size: boldFontSize),
                   ),
                   const SizedBox(width: 5),
@@ -63,14 +363,14 @@ class _ChattingPageState extends State<ChattingPage> {
                         radius: 25,
                         backgroundColor: Colors.blue[200],
                         child: Text(
-                          "M",
+                          widget.contactName[0].toUpperCase(),
                           style: TextStyle(
                             color: Colors.blue[800],
                             fontSize: normalFontSize,
                           ),
                         ),
                       ),
-                      Positioned(
+                      if (!widget.isGroup) Positioned(
                         right: 0,
                         bottom: 0,
                         child: Container(
@@ -89,11 +389,11 @@ class _ChattingPageState extends State<ChattingPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Mehul",
+                        Text(widget.contactName,
                             style: TextStyle(
                                 fontSize: normalFontSize,
                                 fontWeight: FontWeight.w700)),
-                        Text("online",
+                        Text(widget.isGroup ? "Group" : "online",
                             style: TextStyle(fontSize: normalFontSize - 3)),
                       ],
                     ),
@@ -125,30 +425,88 @@ class _ChattingPageState extends State<ChattingPage> {
                       }).toList();
                     },
                   ),
-                  SizedBox(width: 5,),
+                  SizedBox(width: 5),
                 ],
               ),
             ),
             const Divider(),
 
-            // Messages area
+            // Messages List
             Expanded(
               child: SingleChildScrollView(
+                reverse: true,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
-                  children: [
-                    _buildFileMessageBubble("Mehul", "Screenshot_20250306-205317_Phone.jpg"),
-                    _buildTextMessageBubble("Mehul", "Hi", isSender: false),
-                    _buildTextMessageBubble("Shreeji", "Hi", isSender: true),
-                    _buildTextMessageBubble("Shreeji", "hi", isSender: true),
-                  ],
+                  children: messages.reversed.map((message) {
+                    if (message.isFile) {
+                      return _buildFileMessageBubble(
+                        message,
+                        isSender: message.isSender,
+                      );
+                    } else {
+                      return _buildTextMessageBubble(
+                        message,
+                        isSender: message.isSender,
+                      );
+                    }
+                  }).toList(),
                 ),
               ),
             ),
-
             const Divider(),
 
-            // Input field
+            // Attachment Panel
+            if (_showAttachmentPanel)
+              Container(
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    if (_selectedFiles.isEmpty)
+                      Text(
+                        'No files selected',
+                        style: TextStyle(color: greyColor),
+                      )
+                    else
+                      ..._selectedFiles.map((file) => ListTile(
+                        leading: Icon(
+                          _getFileIcon(file.name),
+                          color: Colors.blue[700],
+                        ),
+                        title: Text(
+                          file.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.close, color: Colors.red),
+                          onPressed: () => _removeFile(_selectedFiles.indexOf(file)),
+                        ),
+                      )).toList(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _pickFiles,
+                          child: const Text('Add Files'),
+                        ),
+                        ElevatedButton(
+                          onPressed: _sendFiles,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[700],
+                          ),
+                          child: const Text('Send All', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+            // Message Input
             Container(
               padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
               child: TextField(
@@ -157,11 +515,15 @@ class _ChattingPageState extends State<ChattingPage> {
                 style: TextStyle(fontSize: normalFontSize),
                 decoration: InputDecoration(
                   prefixIcon: IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      setState(() {
+                        _showAttachmentPanel = !_showAttachmentPanel;
+                      });
+                    },
                     icon: const Icon(Icons.attach_file_outlined),
                   ),
                   suffixIcon: IconButton(
-                    onPressed: () {},
+                    onPressed: _sendMessage,
                     icon: const Icon(Icons.send_outlined),
                   ),
                   hintText: "Type message",
@@ -178,6 +540,7 @@ class _ChattingPageState extends State<ChattingPage> {
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
+                onSubmitted: (_) => _sendMessage(),
               ),
             ),
           ],
@@ -186,57 +549,76 @@ class _ChattingPageState extends State<ChattingPage> {
     );
   }
 
-  Widget _buildFileMessageBubble(String sender, String fileName) {
+  Widget _buildFileMessageBubble(Message message, {required bool isSender}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+      isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Container(
           margin: const EdgeInsets.only(top: 10),
           child: Row(
+            mainAxisAlignment:
+            isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
-              Expanded(
+              if (isSender) _buildMessagePopupMenu(message),
+              GestureDetector(
+                onTap: () => _downloadFile(message),
                 child: Container(
                   padding:
                   const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: isSender ? Colors.blue[500] : Colors.grey[200],
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.grey[400],
-                        child: Icon(Icons.download_outlined,
-                            size: 30, color: Colors.grey[300]),
+                      Icon(
+                        _getFileIcon(message.fileName ?? ''),
+                        size: 30,
+                        color: isSender ? Colors.white : Colors.black,
                       ),
                       const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          style: TextStyle(
-                            fontSize: normalFontSize - 2,
-                            fontWeight: FontWeight.w700,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message.fileName ?? 'File',
+                            style: TextStyle(
+                              fontSize: normalFontSize - 2,
+                              fontWeight: FontWeight.w700,
+                              color: isSender ? Colors.white : Colors.black,
+                            ),
+                            softWrap: true,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          Text(
+                            message.fileType?.toUpperCase() ?? 'FILE',
+                            style: TextStyle(
+                              fontSize: normalFontSize - 4,
+                              color: isSender ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
                       ),
+                      if (message.isFavorite)
+                        Icon(Icons.star, color: Colors.yellow[700], size: 20),
                     ],
                   ),
                 ),
               ),
-              _popupMenu(),
+              if (!isSender) _buildMessagePopupMenu(message),
             ],
           ),
         ),
         const SizedBox(height: 5),
-        Text("$sender 3/12/2025 12:08:14 PM", style: TextStyle(color: greyColor)),
+        Text("${message.sender} ${_formatTimestamp(message.timestamp)}",
+            style: TextStyle(color: greyColor)),
       ],
     );
   }
 
-  Widget _buildTextMessageBubble(String sender, String message,
-      {required bool isSender}) {
+  Widget _buildTextMessageBubble(Message message, {required bool isSender}) {
     return Column(
       crossAxisAlignment:
       isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -247,46 +629,82 @@ class _ChattingPageState extends State<ChattingPage> {
           isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
             if (!isSender) ...[],
-            if (isSender) _popupMenu(),
+            if (isSender) _buildMessagePopupMenu(message),
             Container(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-              padding:
-              const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-              decoration: BoxDecoration(
-                color: isSender ? Colors.blue[500] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: normalFontSize - 2,
-                  fontWeight: FontWeight.w700,
-                  color: isSender ? Colors.white : Colors.black,
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                padding:
+                const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: isSender ? Colors.blue[500] : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(15),
                 ),
-              ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        message.content,
+                        style: TextStyle(
+                          fontSize: normalFontSize - 2,
+                          fontWeight: FontWeight.w700,
+                          color: isSender ? Colors.white : Colors.black,
+                        ),
+                        softWrap: true,
+                      ),
+                    ),
+                    if (message.isFavorite)
+                      Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(Icons.star, color: Colors.yellow[700], size: 20),
+                      ),
+                  ],
+                )
             ),
-            if (!isSender) _popupMenu(),
+            if (!isSender) _buildMessagePopupMenu(message),
           ],
         ),
         const SizedBox(height: 5),
-        Text("$sender 3/12/2025 12:08:14 PM", style: TextStyle(color: greyColor)),
+        Text("${message.sender} ${_formatTimestamp(message.timestamp)}",
+            style: TextStyle(color: greyColor)),
       ],
     );
   }
 
-  Widget _popupMenu() {
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.month}/${timestamp.day}/${timestamp.year} '
+        '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}:'
+        '${timestamp.second.toString().padLeft(2, '0')} '
+        '${timestamp.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  Widget _buildMessagePopupMenu(Message message) {
     return PopupMenuButton<int>(
       icon: Icon(Icons.more_vert, color: Colors.grey[500]),
       itemBuilder: (context) => [
+        if (message.isFile)
+          PopupMenuItem(
+            value: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Download",
+                    style: TextStyle(color: greyColor, fontSize: normalFontSize)),
+                Icon(Icons.download,
+                    color: greyColor, size: normalFontSize),
+              ],
+            ),
+          ),
         PopupMenuItem(
           value: 1,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Favorite",
+              Text(message.isFavorite ? "Unfavorite" : "Favorite",
                   style: TextStyle(color: greyColor, fontSize: normalFontSize)),
-              Icon(Icons.star_border_outlined,
-                  color: greyColor, size: normalFontSize),
+              Icon(message.isFavorite ? Icons.star : Icons.star_border_outlined,
+                  color: message.isFavorite ? Colors.yellow[700] : greyColor,
+                  size: normalFontSize),
             ],
           ),
         ),
@@ -306,7 +724,15 @@ class _ChattingPageState extends State<ChattingPage> {
       offset: const Offset(0, 40),
       color: Colors.white,
       elevation: 2,
-      onSelected: (value) {},
+      onSelected: (value) async {
+        if (value == 1) {
+          await _toggleFavorite(message);
+        } else if (value == 2) {
+          await _deleteMessage(message);
+        } else if (value == 3) {
+          await _downloadFile(message);
+        }
+      },
     );
   }
 }

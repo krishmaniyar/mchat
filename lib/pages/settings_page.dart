@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/auth_handler.dart';
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -148,8 +150,40 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final shouldLogout = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Logout'),
+                            content: Text('Are you sure you want to logout?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text('Logout'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        // Only proceed if user confirmed
+                        if (shouldLogout == true) {
+                          await AuthHandler.logout();
+
+                          // Navigate to login screen and remove all previous routes
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/login',
+                                (route) => false,
+                          );
+                        }
+                      },
                       icon: Icon(Icons.logout_outlined),
+                      tooltip: 'Logout', // Optional tooltip
                     ),
                   ],
                 ),

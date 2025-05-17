@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mchat/models/auth_handler.dart';
+import 'package:mchat/models/json_handler.dart';
 import 'package:mchat/pages/chatting_page.dart';
 
 class ChatsPage extends StatefulWidget {
@@ -11,6 +13,81 @@ class ChatsPage extends StatefulWidget {
 class _ChatsPageState extends State<ChatsPage> {
   bool isDirect = true;
   final TextEditingController searchController = TextEditingController();
+  List<String> users = [];
+  List<String> groups = [];
+  bool isLoading = true;
+  String? currentUser;
+  Map<String, List<Message>> chatMessages = {};
+  Map<String, List<Message>> groupMessages = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => isLoading = true);
+    try {
+      currentUser = await AuthHandler.getCurrentUser();
+      final allUsers = await AuthHandler.getAllUsers();
+      users = allUsers.where((user) => user != currentUser).toList();
+
+      // Load groups for current user
+      groups = await AuthHandler.getUserGroups(currentUser!);
+
+      // Load messages for all chats and groups
+      await _loadAllMessages();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _loadAllMessages() async {
+    // Load direct chat messages
+    for (final user in users) {
+      final messages = await JsonHandler.readMessages();
+      chatMessages[user] = messages.where((m) =>
+      m.sender == user || (m.isSender && m.sender == currentUser)
+      ).toList();
+    }
+
+    // Load group messages
+    for (final group in groups) {
+      final messages = await JsonHandler.readMessages(groupName: group);
+      groupMessages[group] = messages;
+    }
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.month}/${dateTime.day}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _getLastMessagePreview(String chatId, bool isDirect) {
+    final messages = isDirect
+        ? chatMessages[chatId] ?? []
+        : groupMessages[chatId] ?? [];
+
+    if (messages.isEmpty) return "No messages yet";
+
+    final lastMessage = messages.last;
+    if (lastMessage.isFile) {
+      return "📄 ${lastMessage.fileName ?? 'File'}";
+    }
+    return lastMessage.content;
+  }
+
+  DateTime _getLastMessageTime(String chatId, bool isDirect) {
+    final messages = isDirect
+        ? chatMessages[chatId] ?? []
+        : groupMessages[chatId] ?? [];
+
+    return messages.isNotEmpty ? messages.last.timestamp : DateTime.now();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +111,11 @@ class _ChatsPageState extends State<ChatsPage> {
     final containerPaddingHorizontal = screenWidth * 0.05;
     final containerBorderRadius = screenWidth * 0.035;
     final statusIndicatorSize = screenWidth * 0.035;
+
+    final currentList = isDirect ? users : groups;
+    final filteredList = currentList.where((item) =>
+        item.toLowerCase().contains(searchController.text.toLowerCase())
+    ).toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -64,7 +146,7 @@ class _ChatsPageState extends State<ChatsPage> {
                 ),
                 decoration: InputDecoration(
                   suffixIcon: Icon(Icons.search),
-                  hintText: "Search user",
+                  hintText: isDirect ? "Search user" : "Search group",
                   contentPadding: EdgeInsets.symmetric(
                     vertical: screenHeight * 0.02,
                     horizontal: screenWidth * 0.0375,
@@ -80,6 +162,7 @@ class _ChatsPageState extends State<ChatsPage> {
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
+                onChanged: (value) => setState(() {}),
               ),
               SizedBox(height: verticalPaddingMedium),
               Row(
@@ -102,11 +185,7 @@ class _ChatsPageState extends State<ChatsPage> {
                               ),
                             ),
                           ),
-                          onPressed: () => {
-                            setState(() {
-                              isDirect = !isDirect;
-                            }),
-                          },
+                          onPressed: () => setState(() => isDirect = true),
                           child: Padding(
                             padding: EdgeInsets.symmetric(
                               vertical: screenHeight * 0.00625,
@@ -132,11 +211,7 @@ class _ChatsPageState extends State<ChatsPage> {
                               ),
                             ),
                           ),
-                          onPressed: () => {
-                            setState(() {
-                              isDirect = !isDirect;
-                            }),
-                          },
+                          onPressed: () => setState(() => isDirect = false),
                           child: Padding(
                             padding: EdgeInsets.symmetric(
                               vertical: screenHeight * 0.00625,
@@ -158,224 +233,118 @@ class _ChatsPageState extends State<ChatsPage> {
                 ],
               ),
               SizedBox(height: verticalPaddingLarge),
-              GestureDetector(
-                onTap: () => {
-                  Navigator.pop(context),
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ChattingPage()),
-                  ),
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: containerPaddingVertical,
-                    horizontal: containerPaddingHorizontal,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(containerBorderRadius),
-                    border: Border.all(
-                      color: Colors.blue.shade500,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: avatarRadius,
-                            backgroundColor: Colors.blue[200],
-                            child: Text(
-                              "M",
-                              style: TextStyle(
-                                color: Colors.blue[800],
-                                fontSize: normalFontSize,
+
+              if (isLoading)
+                Center(child: CircularProgressIndicator())
+              else if (filteredList.isEmpty)
+                Center(child: Text(
+                    isDirect ? "No users found" : "No groups found",
+                    style: TextStyle(fontSize: normalFontSize)
+                ))
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredList.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredList[index];
+                      final lastMessage = _getLastMessagePreview(item, isDirect);
+                      final lastMessageTime = _getLastMessageTime(item, isDirect);
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChattingPage(
+                                contactName: item,
+                                isGroup: !isDirect,
                               ),
                             ),
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: containerPaddingVertical,
+                            horizontal: containerPaddingHorizontal,
                           ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  width: 2,
-                                  color: Colors.white,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(containerBorderRadius),
+                            border: Border.all(
+                              color: Colors.blue.shade500,
+                              width: 2,
+                            ),
+                          ),
+                          margin: EdgeInsets.only(bottom: verticalPaddingMedium),
+                          child: Row(
+                            children: [
+                              Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: avatarRadius,
+                                    backgroundColor: Colors.blue[200],
+                                    child: Text(
+                                      item[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.blue[800],
+                                        fontSize: normalFontSize,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isDirect) Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          width: 2,
+                                          color: Colors.white,
+                                        ),
+                                        borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                        color: index % 2 == 0 ? Colors.green : Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(width: screenWidth * 0.025),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item,
+                                      style: TextStyle(
+                                        fontSize: normalFontSize,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      lastMessage,
+                                      style: TextStyle(
+                                        fontSize: smallFontSize,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                                borderRadius: BorderRadius.circular(statusIndicatorSize),
-                                color: Colors.green,
                               ),
-                            ),
+                              SizedBox(width: screenWidth * 0.025),
+                              Text(
+                                _formatDateTime(lastMessageTime),
+                                style: TextStyle(
+                                  fontSize: tinyFontSize,
+                                  color: greyColor,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      SizedBox(width: screenWidth * 0.025),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Mehul",
-                              style: TextStyle(
-                                fontSize: normalFontSize,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              "hi",
-                              style: TextStyle(
-                                fontSize: smallFontSize,
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
-                      SizedBox(width: screenWidth * 0.025),
-                      Text(
-                        "5/15/2025 11:05:11 AM",
-                        style: TextStyle(
-                          fontSize: tinyFontSize,
-                          color: greyColor,
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-              ),
-              SizedBox(height: verticalPaddingMedium),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: containerPaddingVertical,
-                  horizontal: containerPaddingHorizontal,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(containerBorderRadius),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "S",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(statusIndicatorSize),
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: screenWidth * 0.025),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "SHM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: verticalPaddingMedium),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: containerPaddingVertical,
-                  horizontal: containerPaddingHorizontal,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(containerBorderRadius),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "A",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(statusIndicatorSize),
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: screenWidth * 0.025),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "ASM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),

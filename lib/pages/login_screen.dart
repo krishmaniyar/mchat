@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mchat/pages/bottomnav.dart';
+import 'package:mchat/pages/register_screen.dart';
+import '../models/auth_handler.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,22 +16,46 @@ class _LoginScreenState extends State<LoginScreen> {
   Color? greyColor = Colors.grey[700];
   Color? blueColor = Colors.blue[700];
 
-  final TextEditingController usernameController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool rememberMe = false;
+  bool _isLoading = false;
 
-  void authenticate() {
+  Future<void> authenticate() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter both username and password')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      print(usernameController.text);
-      if (usernameController.text.trim() == "shreeji" &&
-          passwordController.text == "123456") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => BottomNav()),
+      final success = await AuthHandler.loginUser(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (success) {
+        Navigator.pushReplacementNamed(context, '/chat');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid username or password')),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -50,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 40),
                       Text(
                         "Sign in",
                         style: TextStyle(
@@ -57,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: boldFontSize,
                         ),
                       ),
+                      const SizedBox(height: 10),
                       Text(
                         "Sign in to continue to Mchat",
                         style: TextStyle(
@@ -79,22 +107,25 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Username", style: TextStyle(fontSize: normalFontSize, color: greyColor)),
+                              Text("Username",
+                                  style: TextStyle(fontSize: normalFontSize, color: greyColor)),
                               const SizedBox(height: 10),
                               TextField(
-                                controller: usernameController,
+                                controller: _usernameController,
                                 keyboardType: TextInputType.text,
                                 style: TextStyle(fontSize: normalFontSize),
-                                decoration: _buildInputDecoration("Enter your login or email"),
+                                decoration: _buildInputDecoration("Enter your username"),
                               ),
                               const SizedBox(height: 20),
-                              Text("Password", style: TextStyle(fontSize: normalFontSize, color: greyColor)),
+                              Text("Password",
+                                  style: TextStyle(fontSize: normalFontSize, color: greyColor)),
                               const SizedBox(height: 10),
                               TextField(
-                                controller: passwordController,
+                                controller: _passwordController,
                                 obscureText: true,
                                 style: TextStyle(fontSize: normalFontSize),
                                 decoration: _buildInputDecoration("Enter your password"),
+                                onSubmitted: (_) => authenticate(),
                               ),
                               const SizedBox(height: 20),
                               Row(
@@ -107,11 +138,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                       });
                                     },
                                   ),
-                                  Text("Remember me", style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
+                                  Text("Remember me",
+                                      style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
                                   const Spacer(),
                                   TextButton(
-                                    onPressed: () {},
-                                    child: Text("Reset Password", style: TextStyle(color: blueColor, fontSize: normalFontSize - 2)),
+                                    onPressed: () {
+                                      // Add password reset functionality
+                                    },
+                                    child: Text("Reset Password",
+                                        style: TextStyle(color: blueColor, fontSize: normalFontSize - 2)),
                                   ),
                                 ],
                               ),
@@ -124,22 +159,38 @@ class _LoginScreenState extends State<LoginScreen> {
                                     shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                                       RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                     ),
+                                    padding: WidgetStateProperty.all<EdgeInsets>(
+                                        const EdgeInsets.symmetric(vertical: 15)),
                                   ),
-                                  onPressed: authenticate,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                    child: Text("Sign in", style: TextStyle(color: Colors.white, fontSize: boldFontSize)),
-                                  ),
+                                  onPressed: _isLoading ? null : authenticate,
+                                  child: _isLoading
+                                      ? SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                      : Text("Sign in",
+                                      style: TextStyle(color: Colors.white, fontSize: boldFontSize)),
                                 ),
                               ),
                               const SizedBox(height: 20),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text("Don't have an account?", style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
+                                  Text("Don't have an account?",
+                                      style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
                                   TextButton(
-                                    onPressed: () {},
-                                    child: Text("Sign Up", style: TextStyle(fontSize: normalFontSize - 2, color: blueColor)),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => RegisterScreen()),
+                                      );
+                                    },
+                                    child: Text("Sign Up",
+                                        style: TextStyle(fontSize: normalFontSize - 2, color: blueColor)),
                                   ),
                                 ],
                               ),
@@ -147,6 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -162,17 +214,20 @@ class _LoginScreenState extends State<LoginScreen> {
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 10.0),
-      focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Colors.white),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      enabledBorder: UnderlineInputBorder(
-        borderSide: const BorderSide(color: Colors.white),
-        borderRadius: BorderRadius.circular(20),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 15.0),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
       ),
       filled: true,
-      fillColor: Colors.grey[300],
+      fillColor: Colors.grey[200],
     );
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
