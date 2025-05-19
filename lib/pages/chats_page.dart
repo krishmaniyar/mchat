@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mchat/models/auth_handler.dart';
-import 'package:mchat/models/json_handler.dart';
-import 'package:mchat/pages/chatting_page.dart';
+import '../models/auth_handler.dart';
+import '../models/json_handler.dart';
+import 'chatting_page.dart';
+import 'group_chat_page.dart';
 
 class ChatsPage extends StatefulWidget {
   const ChatsPage({super.key});
@@ -32,61 +33,96 @@ class _ChatsPageState extends State<ChatsPage> {
       currentUser = await AuthHandler.getCurrentUser();
       final allUsers = await AuthHandler.getAllUsers();
       users = allUsers.where((user) => user != currentUser).toList();
-
-      // Load groups for current user
       groups = await AuthHandler.getUserGroups(currentUser!);
-
-      // Load messages for all chats and groups
       await _loadAllMessages();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading data: ${e.toString()}')),
       );
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> _loadAllMessages() async {
-    // Load direct chat messages
     for (final user in users) {
-      final messages = await JsonHandler.readMessages();
-      chatMessages[user] = messages.where((m) =>
-      m.sender == user || (m.isSender && m.sender == currentUser)
-      ).toList();
+      final directChatId = _getDirectChatId(currentUser!, user);
+      final messages = await JsonHandler.readDirectMessages(currentUser!, user);
+      chatMessages[user] = messages;
     }
 
-    // Load group messages
     for (final group in groups) {
-      final messages = await JsonHandler.readMessages(groupName: group);
+      final messages = await JsonHandler.readGroupMessages(group);
       groupMessages[group] = messages;
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.month}/${dateTime.day}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  String _getDirectChatId(String user1, String user2) {
+    List<String> users = [user1, user2]..sort();
+    return 'direct_${users[0]}_${users[1]}';
   }
 
-  String _getLastMessagePreview(String chatId, bool isDirect) {
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (messageDate == today) {
+      return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday';
+    } else {
+      return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    }
+  }
+
+  String _getLastMessagePreview(String chatId) {
     final messages = isDirect
         ? chatMessages[chatId] ?? []
         : groupMessages[chatId] ?? [];
 
     if (messages.isEmpty) return "No messages yet";
-
     final lastMessage = messages.last;
     if (lastMessage.isFile) {
       return "📄 ${lastMessage.fileName ?? 'File'}";
     }
-    return lastMessage.content;
+    return lastMessage.content.length > 30
+        ? '${lastMessage.content.substring(0, 30)}...'
+        : lastMessage.content;
   }
 
-  DateTime _getLastMessageTime(String chatId, bool isDirect) {
+  DateTime _getLastMessageTime(String chatId) {
     final messages = isDirect
         ? chatMessages[chatId] ?? []
         : groupMessages[chatId] ?? [];
+    return messages.isNotEmpty ? messages.last.timestamp : DateTime(0);
+  }
 
-    return messages.isNotEmpty ? messages.last.timestamp : DateTime.now();
+  List<String> _getFilteredAndSortedChats() {
+    final currentMap = isDirect ? chatMessages : groupMessages;
+    final allChats = isDirect ? users : groups;
+
+    // Filter chats that have at least one message
+    var chatsWithMessages = allChats.where((chat) {
+      final messages = currentMap[chat] ?? [];
+      return messages.isNotEmpty;
+    }).toList();
+
+    chatsWithMessages = isDirect ? chatsWithMessages : groups;
+
+    // Sort by most recent message time (newest first)
+    chatsWithMessages.sort((a, b) {
+      final timeA = _getLastMessageTime(a);
+      final timeB = _getLastMessageTime(b);
+      return timeB.compareTo(timeA);
+    });
+
+    // Apply search filter
+    return chatsWithMessages.where((item) =>
+        item.toLowerCase().contains(searchController.text.toLowerCase())
+    ).toList();
   }
 
   @override
@@ -100,6 +136,7 @@ class _ChatsPageState extends State<ChatsPage> {
     final tinyFontSize = screenHeight * 0.015;
 
     final greyColor = Colors.grey[700];
+    final blueColor = Colors.blue[700];
 
     final horizontalPadding = screenWidth * 0.05;
     final verticalPaddingSmall = screenHeight * 0.0125;
@@ -111,11 +148,9 @@ class _ChatsPageState extends State<ChatsPage> {
     final containerPaddingHorizontal = screenWidth * 0.05;
     final containerBorderRadius = screenWidth * 0.035;
     final statusIndicatorSize = screenWidth * 0.035;
+    final buttonBorderRadius = screenWidth * 0.025;
 
-    final currentList = isDirect ? users : groups;
-    final filteredList = currentList.where((item) =>
-        item.toLowerCase().contains(searchController.text.toLowerCase())
-    ).toList();
+    final filteredList = _getFilteredAndSortedChats();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -238,7 +273,7 @@ class _ChatsPageState extends State<ChatsPage> {
                 Center(child: CircularProgressIndicator())
               else if (filteredList.isEmpty)
                 Center(child: Text(
-                    isDirect ? "No users found" : "No groups found",
+                    isDirect ? "No chats found" : "No group chats found",
                     style: TextStyle(fontSize: normalFontSize)
                 ))
               else
@@ -247,20 +282,19 @@ class _ChatsPageState extends State<ChatsPage> {
                     itemCount: filteredList.length,
                     itemBuilder: (context, index) {
                       final item = filteredList[index];
-                      final lastMessage = _getLastMessagePreview(item, isDirect);
-                      final lastMessageTime = _getLastMessageTime(item, isDirect);
+                      final lastMessage = _getLastMessagePreview(item);
+                      final lastMessageTime = _getLastMessageTime(item);
 
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ChattingPage(
-                                contactName: item,
-                                isGroup: !isDirect,
-                              ),
+                              builder: (context) => isDirect
+                                  ? ChattingPage(contactName: item, isGroup: false)
+                                  : GroupChatPage(groupName: item),
                             ),
-                          );
+                          ).then((_) => _loadData());
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(

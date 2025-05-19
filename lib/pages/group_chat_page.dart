@@ -10,21 +10,19 @@ import 'package:path_provider/path_provider.dart';
 import '../models/json_handler.dart';
 import '../models/auth_handler.dart';
 
-class ChattingPage extends StatefulWidget {
-  final String contactName;
-  final bool isGroup;
+class GroupChatPage extends StatefulWidget {
+  final String groupName;
 
-  const ChattingPage({
+  const GroupChatPage({
     super.key,
-    required this.contactName,
-    this.isGroup = false,
+    required this.groupName,
   });
 
   @override
-  State<ChattingPage> createState() => _ChattingPageState();
+  State<GroupChatPage> createState() => _GroupChatPageState();
 }
 
-class _ChattingPageState extends State<ChattingPage> {
+class _GroupChatPageState extends State<GroupChatPage> {
   double boldFontSize = 30.0;
   double normalFontSize = 20.0;
   Color? greyColor = Colors.grey[700];
@@ -51,6 +49,7 @@ class _ChattingPageState extends State<ChattingPage> {
   List<PlatformFile> _selectedFiles = [];
   final Dio _dio = Dio();
   String? currentUserId;
+  List<String> groupMembers = [];
 
   @override
   void initState() {
@@ -60,6 +59,7 @@ class _ChattingPageState extends State<ChattingPage> {
 
   Future<void> _initializeChat() async {
     await _loadCurrentUser();
+    await _loadGroupMembers();
     await _loadMessages();
     _startExpirationTimer();
     await FlutterDownloader.initialize(debug: true);
@@ -70,11 +70,13 @@ class _ChattingPageState extends State<ChattingPage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadMessages() async {
-    final loadedMessages = widget.isGroup
-        ? await JsonHandler.readGroupMessages(widget.contactName)
-        : await JsonHandler.readDirectMessages(currentUserId!, widget.contactName);
+  Future<void> _loadGroupMembers() async {
+    groupMembers = await AuthHandler.getGroupMembers(widget.groupName);
+    if (mounted) setState(() {});
+  }
 
+  Future<void> _loadMessages() async {
+    final loadedMessages = await JsonHandler.readGroupMessages(widget.groupName);
     if (mounted) {
       setState(() {
         messages = loadedMessages;
@@ -89,10 +91,7 @@ class _ChattingPageState extends State<ChattingPage> {
   }
 
   Future<void> _checkForExpiredMessages() async {
-    final currentMessages = widget.isGroup
-        ? await JsonHandler.readGroupMessages(widget.contactName)
-        : await JsonHandler.readDirectMessages(currentUserId!, widget.contactName);
-
+    final currentMessages = await JsonHandler.readGroupMessages(widget.groupName);
     if (mounted && currentMessages.length != messages.length) {
       setState(() => messages = currentMessages);
     }
@@ -124,11 +123,7 @@ class _ChattingPageState extends State<ChattingPage> {
       expiresAfter: _getDurationFromOption(selectedOption),
     );
 
-    if (widget.isGroup) {
-      await JsonHandler.addGroupMessage(newMessage, widget.contactName);
-    } else {
-      await JsonHandler.addDirectMessage(newMessage, currentUserId!, widget.contactName);
-    }
+    await JsonHandler.addGroupMessage(newMessage, widget.groupName);
 
     if (mounted) {
       messageController.clear();
@@ -152,11 +147,7 @@ class _ChattingPageState extends State<ChattingPage> {
         fileUrl: 'https://example.com/${file.name}',
       );
 
-      if (widget.isGroup) {
-        await JsonHandler.addGroupMessage(newMessage, widget.contactName);
-      } else {
-        await JsonHandler.addDirectMessage(newMessage, currentUserId!, widget.contactName);
-      }
+      await JsonHandler.addGroupMessage(newMessage, widget.groupName);
     }
 
     if (mounted) {
@@ -192,25 +183,13 @@ class _ChattingPageState extends State<ChattingPage> {
   Future<void> _deleteMessage(Message message) async {
     if (message.sender != currentUserId) return;
 
-    if (widget.isGroup) {
-      await JsonHandler.deleteGroupMessage(message, widget.contactName);
-    } else {
-      await JsonHandler.deleteDirectMessage(message, currentUserId!, widget.contactName);
-    }
+    await JsonHandler.deleteGroupMessage(message, widget.groupName);
 
     if (mounted) await _loadMessages();
   }
 
   Future<void> _toggleFavorite(Message message) async {
-    if (widget.isGroup) {
-      await JsonHandler.toggleFavoriteGroupMessage(message, widget.contactName);
-    } else {
-      await JsonHandler.toggleFavoriteDirectMessage(
-          message,
-          currentUserId!,
-          widget.contactName
-      );
-    }
+    await JsonHandler.toggleFavoriteGroupMessage(message, widget.groupName);
 
     if (mounted) await _loadMessages();
   }
@@ -327,90 +306,98 @@ class _ChattingPageState extends State<ChattingPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // App Bar
+            // App Bar with Group Members
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
               color: Colors.white,
-              child: Row(
+              child: Column(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.arrow_back, size: boldFontSize),
-                  ),
-                  const SizedBox(width: 5),
-                  Stack(
+                  Row(
                     children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.arrow_back, size: boldFontSize),
+                      ),
+                      const SizedBox(width: 5),
                       CircleAvatar(
                         radius: 25,
                         backgroundColor: Colors.blue[200],
                         child: Text(
-                          widget.contactName[0].toUpperCase(),
+                          widget.groupName[0].toUpperCase(),
                           style: TextStyle(
                             color: Colors.blue[800],
                             fontSize: normalFontSize,
                           ),
                         ),
                       ),
-                      if (!widget.isGroup) Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(7.5),
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 2, color: Colors.white),
-                            borderRadius: BorderRadius.circular(90.0),
-                            color: Colors.green,
-                          ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.groupName,
+                              style: TextStyle(
+                                fontSize: normalFontSize,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              "${groupMembers.length} members",
+                              style: TextStyle(fontSize: normalFontSize - 3),
+                            ),
+                          ],
                         ),
-                      )
+                      ),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert),
+                        initialValue: selectedOption,
+                        onSelected: (String value) {
+                          setState(() {
+                            selectedOption = value;
+                          });
+                        },
+                        itemBuilder: (BuildContext context) {
+                          return options.map((String option) {
+                            return PopupMenuItem<String>(
+                              value: option,
+                              child: Row(
+                                children: [
+                                  Radio<String>(
+                                    value: option,
+                                    groupValue: selectedOption,
+                                    onChanged: (_) {},
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(option),
+                                ],
+                              ),
+                            );
+                          }).toList();
+                        },
+                      ),
+                      SizedBox(width: 5),
                     ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.contactName,
-                            style: TextStyle(
-                                fontSize: normalFontSize,
-                                fontWeight: FontWeight.w700)),
-                        Text(widget.isGroup ? "Group" : "online",
-                            style: TextStyle(fontSize: normalFontSize - 3)),
-                      ],
+                  // Group Members List
+                  if (groupMembers.isNotEmpty)
+                    SizedBox(
+                      height: 30,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(left: 60, right: 20, top: 10),
+                        itemCount: groupMembers.length,
+                        itemBuilder: (context, index) {
+                          return Text('${groupMembers[index]}, ');
+                        },
+                      ),
                     ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert),
-                    initialValue: selectedOption,
-                    onSelected: (String value) {
-                      setState(() {
-                        selectedOption = value;
-                      });
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return options.map((String option) {
-                        return PopupMenuItem<String>(
-                          value: option,
-                          child: Row(
-                            children: [
-                              Radio<String>(
-                                value: option,
-                                groupValue: selectedOption,
-                                onChanged: (_) {},
-                              ),
-                              SizedBox(width: 8),
-                              Text(option),
-                            ],
-                          ),
-                        );
-                      }).toList();
-                    },
-                  ),
-                  SizedBox(width: 5),
                 ],
               ),
             ),
             const Divider(),
+
+            // Messages List
             Expanded(
               child: ListView.builder(
                 reverse: true,

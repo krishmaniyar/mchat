@@ -11,7 +11,6 @@ class AuthHandler {
     WidgetsFlutterBinding.ensureInitialized();
   }
 
-  // User Management
   static Future<bool> registerUser(String username, String password) async {
     final prefs = await SharedPreferences.getInstance();
     final users = prefs.getStringList(usersKey) ?? [];
@@ -24,8 +23,6 @@ class AuthHandler {
     users.add(username);
     await prefs.setStringList(usersKey, users);
     await prefs.setString('${username}_password', password);
-
-    // Initialize user's group list
     await prefs.setStringList('${username}_$userGroupsKey', []);
     return true;
   }
@@ -55,32 +52,26 @@ class AuthHandler {
     return await getCurrentUser() != null;
   }
 
-  // Group Management
   static Future<bool> createGroup(String groupName, List<String> members) async {
     final prefs = await SharedPreferences.getInstance();
     final currentUser = await getCurrentUser();
 
     if (currentUser == null) return false;
 
-    // Add current user to members if not already included
     if (!members.contains(currentUser)) {
       members.add(currentUser);
     }
 
-    // Get all existing groups
     final allGroups = prefs.getStringList(allGroupsKey) ?? [];
 
-    // Check if group already exists
     if (allGroups.contains(groupName)) {
       debugPrint('Group already exists');
       return false;
     }
 
-    // Add group to the global list
     allGroups.add(groupName);
     await prefs.setStringList(allGroupsKey, allGroups);
 
-    // Add group to each member's group list
     for (final member in members) {
       final userGroups = prefs.getStringList('${member}_$userGroupsKey') ?? [];
       if (!userGroups.contains(groupName)) {
@@ -89,37 +80,30 @@ class AuthHandler {
       }
     }
 
-    // Store group members
     await prefs.setStringList('group_${groupName}_members', members);
-
     return true;
   }
 
   static Future<bool> addUserToGroup(String groupName, String username) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Check if group exists
     final allGroups = prefs.getStringList(allGroupsKey) ?? [];
     if (!allGroups.contains(groupName)) {
       debugPrint('Group does not exist');
       return false;
     }
 
-    // Check if user exists
     final users = prefs.getStringList(usersKey) ?? [];
     if (!users.contains(username)) {
       debugPrint('User does not exist');
       return false;
     }
 
-    // Add user to group members
     final members = prefs.getStringList('group_${groupName}_members') ?? [];
     if (!members.contains(username)) {
       members.add(username);
       await prefs.setStringList('group_${groupName}_members', members);
     }
 
-    // Add group to user's group list
     final userGroups = prefs.getStringList('${username}_$userGroupsKey') ?? [];
     if (!userGroups.contains(groupName)) {
       userGroups.add(groupName);
@@ -131,17 +115,13 @@ class AuthHandler {
 
   static Future<bool> removeUserFromGroup(String groupName, String username) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Remove user from group members
     final members = prefs.getStringList('group_${groupName}_members') ?? [];
     members.remove(username);
     await prefs.setStringList('group_${groupName}_members', members);
 
-    // Remove group from user's group list
     final userGroups = prefs.getStringList('${username}_$userGroupsKey') ?? [];
     userGroups.remove(groupName);
     await prefs.setStringList('${username}_$userGroupsKey', userGroups);
-
     return true;
   }
 

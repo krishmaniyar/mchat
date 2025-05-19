@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/auth_handler.dart';
+import 'chatting_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -9,6 +11,41 @@ class FriendsPage extends StatefulWidget {
 
 class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController searchController = TextEditingController();
+  List<String> users = [];
+  bool isLoading = true;
+  String? currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => isLoading = true);
+    try {
+      currentUser = await AuthHandler.getCurrentUser();
+      final allUsers = await AuthHandler.getAllUsers();
+      users = allUsers.where((user) => user != currentUser).toList();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  void _startChat(String contactName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChattingPage(contactName: contactName, isGroup: false),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +70,10 @@ class _FriendsPageState extends State<FriendsPage> {
     final containerBorderRadius = screenWidth * 0.035;
     final statusIndicatorSize = screenWidth * 0.035;
     final buttonBorderRadius = screenWidth * 0.025;
+
+    final filteredUsers = users.where((user) =>
+        user.toLowerCase().contains(searchController.text.toLowerCase())
+    ).toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -79,338 +120,144 @@ class _FriendsPageState extends State<FriendsPage> {
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
+                onChanged: (value) => setState(() {}),
               ),
               SizedBox(height: verticalPaddingLarge),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: containerPaddingVertical,
-                  horizontal: containerPaddingHorizontal,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(containerBorderRadius),
-                  border: Border.all(color: Colors.blue.shade500, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "M",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
+
+              if (isLoading)
+                Center(child: CircularProgressIndicator())
+              else if (filteredUsers.isEmpty)
+                Center(child: Text(
+                    "No users found",
+                    style: TextStyle(fontSize: normalFontSize)
+                ))
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = filteredUsers[index];
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: containerPaddingVertical,
+                          horizontal: containerPaddingHorizontal,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(containerBorderRadius),
+                          border: Border.all(
+                            color: index == 0 ? Colors.blue.shade500 : Colors.transparent,
+                            width: 2,
                           ),
                         ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white,
+                        margin: EdgeInsets.only(bottom: verticalPaddingMedium),
+                        child: Row(
+                          children: [
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: avatarRadius,
+                                  backgroundColor: Colors.blue[200],
+                                  child: Text(
+                                    user[0].toUpperCase(),
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontSize: normalFontSize,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        width: 2,
+                                        color: Colors.white,
+                                      ),
+                                      borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                      color: index == 0 ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(width: screenWidth * 0.025),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user,
+                                    style: TextStyle(
+                                      fontSize: normalFontSize,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    index == 0 ? "online" : "offline",
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(statusIndicatorSize),
-                              color: Colors.green,
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: screenWidth * 0.025),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Mehul",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
+                            PopupMenuButton<int>(
+                              icon: Icon(Icons.more_horiz),
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 1,
+                                  child: Row(
+                                    children: [
+                                      Text("Start Chat", style: TextStyle(color: greyColor)),
+                                      SizedBox(width: screenWidth * 0.05),
+                                      Icon(Icons.chat_outlined, color: greyColor),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 2,
+                                  child: Row(
+                                    children: [
+                                      Text("Edit Contact", style: TextStyle(color: greyColor)),
+                                      SizedBox(width: screenWidth * 0.05),
+                                      Icon(Icons.edit_outlined, color: greyColor),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuDivider(),
+                                PopupMenuItem(
+                                  value: 3,
+                                  child: Row(
+                                    children: [
+                                      Text("Delete user", style: TextStyle(color: greyColor)),
+                                      SizedBox(width: screenWidth * 0.05),
+                                      Icon(Icons.block_flipped, color: greyColor),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              offset: Offset(0, screenHeight * 0.05),
+                              color: Colors.white,
+                              elevation: 2,
+                              onSelected: (value) {
+                                if (value == 1) {
+                                  _startChat(user);
+                                } else if (value == 2) {
+                                  // Edit contact functionality
+                                } else if (value == 3) {
+                                  // Delete user functionality
+                                }
+                              },
                             ),
-                          ),
-                          Text(
-                            "online",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<int>(
-                      icon: Icon(Icons.more_horiz),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.chat_outlined, color: greyColor),
-                            ],
-                          ),
+                          ],
                         ),
-                        PopupMenuItem(
-                          value: 2,
-                          child: Row(
-                            children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.edit_outlined, color: greyColor),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 3,
-                          child: Row(
-                            children: [
-                              Text("Delete user", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.block_flipped, color: greyColor),
-                            ],
-                          ),
-                        ),
-                      ],
-                      offset: Offset(0, screenHeight * 0.05),
-                      color: Colors.white,
-                      elevation: 2,
-                      onSelected: (value) {
-                        if (value == 1) {}
-                        else if (value == 2) {}
-                        else if (value == 3) {}
-                      },
-                    ),
-                  ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizedBox(height: verticalPaddingMedium),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: containerPaddingVertical,
-                  horizontal: containerPaddingHorizontal,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(containerBorderRadius),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "S",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(statusIndicatorSize),
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: screenWidth * 0.025),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "SHM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "offline",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<int>(
-                      icon: Icon(Icons.more_horiz),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.chat_outlined, color: greyColor),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 2,
-                          child: Row(
-                            children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.edit_outlined, color: greyColor),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 3,
-                          child: Row(
-                            children: [
-                              Text("Delete user", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.block_flipped, color: greyColor),
-                            ],
-                          ),
-                        ),
-                      ],
-                      offset: Offset(0, screenHeight * 0.05),
-                      color: Colors.white,
-                      elevation: 2,
-                      onSelected: (value) {
-                        if (value == 1) {}
-                        else if (value == 2) {}
-                        else if (value == 3) {}
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: verticalPaddingMedium),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: containerPaddingVertical,
-                  horizontal: containerPaddingHorizontal,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(containerBorderRadius),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: Colors.blue[200],
-                          child: Text(
-                            "A",
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: normalFontSize,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                width: 2,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(statusIndicatorSize),
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: screenWidth * 0.025),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "ASM",
-                            style: TextStyle(
-                              fontSize: normalFontSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            "offline",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<int>(
-                      icon: Icon(Icons.more_horiz),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            children: [
-                              Text("Start Chat", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.chat_outlined, color: greyColor),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 2,
-                          child: Row(
-                            children: [
-                              Text("Edit Contact", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.edit_outlined, color: greyColor),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 3,
-                          child: Row(
-                            children: [
-                              Text("Delete user", style: TextStyle(color: greyColor)),
-                              SizedBox(width: screenWidth * 0.05),
-                              Icon(Icons.block_flipped, color: greyColor),
-                            ],
-                          ),
-                        ),
-                      ],
-                      offset: Offset(0, screenHeight * 0.05),
-                      color: Colors.white,
-                      elevation: 2,
-                      onSelected: (value) {
-                        if (value == 1) {}
-                        else if (value == 2) {}
-                        else if (value == 3) {}
-                      },
-                    ),
-                  ],
-                ),
-              ),
               SizedBox(height: verticalPaddingLarge),
               ElevatedButton(
                 style: ButtonStyle(

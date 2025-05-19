@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
 import '../models/auth_handler.dart';
+import '../models/json_handler.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,6 +11,117 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController searchController = TextEditingController();
+  String? currentUserId;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    currentUserId = await AuthHandler.getCurrentUser();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _deleteAllChats() async {
+    _deleteAllGroupChats();
+    _deleteAllDirectChats();
+  }
+
+  Future<void> _deleteAllDirectChats() async {
+    if (currentUserId == null || _isProcessing) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      final allUsers = await AuthHandler.getAllUsers();
+      final otherUsers = allUsers.where((user) => user != currentUserId).toList();
+
+      // Delete direct chats
+      await Future.wait(otherUsers.map((user) async {
+        await JsonHandler.clearDirectMessages(currentUserId!, user);
+      }));
+
+      _showSuccessSnackbar('All chats deleted successfully');
+    } catch (e) {
+      _showErrorSnackbar('Failed to delete chats: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _deleteAllGroupChats() async {
+    if (currentUserId == null || _isProcessing) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      final allUsers = await AuthHandler.getAllUsers();
+      final otherUsers = allUsers.where((user) => user != currentUserId).toList();
+
+      // Delete group chats
+      final userGroups = await AuthHandler.getUserGroups(currentUserId!);
+      await Future.wait(userGroups.map((group) =>
+          JsonHandler.clearGroupMessages(group)
+      ));
+
+      _showSuccessSnackbar('All Group chats deleted successfully');
+    } catch (e) {
+      _showErrorSnackbar('Failed to delete group chats: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await AuthHandler.logout();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+              (route) => false,
+        );
+      }
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showSuccessSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,32 +167,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               SizedBox(height: verticalPaddingSmall),
               const Divider(),
-              // SizedBox(height: verticalPaddingMedium),
-              // TextField(
-              //   controller: searchController,
-              //   keyboardType: TextInputType.text,
-              //   style: TextStyle(
-              //     fontSize: normalFontSize,
-              //   ),
-              //   decoration: InputDecoration(
-              //     suffixIcon: Icon(Icons.search),
-              //     hintText: "Search settings",
-              //     contentPadding: EdgeInsets.symmetric(
-              //       vertical: screenHeight * 0.02,
-              //       horizontal: screenWidth * 0.0375,
-              //     ),
-              //     focusedBorder: OutlineInputBorder(
-              //       borderSide: const BorderSide(color: Colors.white),
-              //       borderRadius: BorderRadius.circular(containerBorderRadius),
-              //     ),
-              //     enabledBorder: UnderlineInputBorder(
-              //       borderSide: const BorderSide(color: Colors.white),
-              //       borderRadius: BorderRadius.circular(containerBorderRadius),
-              //     ),
-              //     filled: true,
-              //     fillColor: Colors.grey[300],
-              //   ),
-              // ),
               SizedBox(height: verticalPaddingLarge),
               Container(
                 padding: EdgeInsets.symmetric(
@@ -104,7 +189,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           radius: avatarRadius,
                           backgroundColor: Colors.green[200],
                           child: Text(
-                            "M",
+                            currentUserId != null && currentUserId!.isNotEmpty
+                                ? currentUserId![0].toUpperCase()
+                                : "?",
                             style: TextStyle(
                               color: Colors.green[800],
                               fontSize: normalFontSize,
@@ -134,56 +221,25 @@ class _SettingsPageState extends State<SettingsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Mehul",
+                            currentUserId ?? "Guest",
                             style: TextStyle(
                               fontSize: normalFontSize,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          Text(
-                            "test@gmail.com",
-                            style: TextStyle(
-                              fontSize: smallFontSize,
+                          if (currentUserId != null)
+                            Text(
+                              currentUserId!,
+                              style: TextStyle(
+                                fontSize: smallFontSize,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
                     IconButton(
-                      onPressed: () async {
-                        // Show confirmation dialog
-                        final shouldLogout = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text('Logout'),
-                            content: Text('Are you sure you want to logout?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: Text('Logout'),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        // Only proceed if user confirmed
-                        if (shouldLogout == true) {
-                          await AuthHandler.logout();
-
-                          // Navigate to login screen and remove all previous routes
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/login',
-                                (route) => false,
-                          );
-                        }
-                      },
-                      icon: Icon(Icons.logout_outlined),
-                      tooltip: 'Logout', // Optional tooltip
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout_outlined),
                     ),
                   ],
                 ),
@@ -200,9 +256,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: _deleteAllChats,
                     child: Text(
-                      "Delete from all devices",
+                      "Delete all Chats",
                       style: TextStyle(
                         color: greyColor,
                         fontSize: smallFontSize,
@@ -232,7 +288,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: _isProcessing ? null : _deleteAllDirectChats,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           vertical: verticalPaddingMedium,
@@ -240,14 +296,24 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.delete_outlined,
-                              color: Colors.white,
-                              size: normalFontSize - 3,
-                            ),
+                            if (_isProcessing)
+                              SizedBox(
+                                width: normalFontSize - 3,
+                                height: normalFontSize - 3,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              Icon(
+                                Icons.delete_outlined,
+                                color: Colors.white,
+                                size: normalFontSize - 3,
+                              ),
                             SizedBox(width: screenWidth * 0.0125),
                             Text(
-                              "Delete All Chat",
+                              _isProcessing ? "Processing..." : "Delete All Personal Chats",
                               style: TextStyle(
                                 fontSize: normalFontSize-3,
                                 fontWeight: FontWeight.w500,
@@ -270,7 +336,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: _isProcessing ? null : _deleteAllGroupChats,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           vertical: verticalPaddingMedium,
@@ -278,14 +344,24 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.delete_outlined,
-                              color: Colors.white,
-                              size: normalFontSize-3,
-                            ),
+                            if (_isProcessing)
+                              SizedBox(
+                                width: normalFontSize - 3,
+                                height: normalFontSize - 3,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              Icon(
+                                Icons.delete_outlined,
+                                color: Colors.white,
+                                size: normalFontSize - 3,
+                              ),
                             SizedBox(width: screenWidth * 0.0125),
                             Text(
-                              "Delete All Chat With Star",
+                              _isProcessing ? "Processing..." : "Delete All Group Chats",
                               style: TextStyle(
                                 fontSize: normalFontSize-3,
                                 fontWeight: FontWeight.w500,
