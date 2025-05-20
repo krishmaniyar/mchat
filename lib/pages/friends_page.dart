@@ -137,155 +137,135 @@ class _FriendsPageState extends State<FriendsPage> {
                     itemCount: filteredUsers.length,
                     itemBuilder: (context, index) {
                       final user = filteredUsers[index];
-                      return Container(
-                        padding: EdgeInsets.symmetric(
-                          vertical: containerPaddingVertical,
-                          horizontal: containerPaddingHorizontal,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(containerBorderRadius),
-                          border: Border.all(
-                            color: index == 0 ? Colors.blue.shade500 : Colors.transparent,
-                            width: 2,
+                      return GestureDetector(
+                        onTap: () => {
+                          _startChat(user)
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: containerPaddingVertical,
+                            horizontal: containerPaddingHorizontal,
                           ),
-                        ),
-                        margin: EdgeInsets.only(bottom: verticalPaddingMedium),
-                        child: Row(
-                          children: [
-                            Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: avatarRadius,
-                                  backgroundColor: Colors.blue[200],
-                                  child: Text(
-                                    user[0].toUpperCase(),
-                                    style: TextStyle(
-                                      color: Colors.blue[800],
-                                      fontSize: normalFontSize,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: EdgeInsets.all(statusIndicatorSize * 0.5),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        width: 2,
-                                        color: Colors.white,
-                                      ),
-                                      borderRadius: BorderRadius.circular(statusIndicatorSize),
-                                      color: index == 0 ? Colors.green : Colors.red,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(containerBorderRadius),
+                            border: Border.all(
+                              color: Colors.transparent,
+                              width: 2,
                             ),
-                            SizedBox(width: screenWidth * 0.025),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                          margin: EdgeInsets.only(bottom: verticalPaddingMedium),
+                          child: Row(
+                            children: [
+                              Stack(
                                 children: [
-                                  Text(
-                                    user,
-                                    style: TextStyle(
-                                      fontSize: normalFontSize,
-                                      fontWeight: FontWeight.w700,
+                                  CircleAvatar(
+                                    radius: avatarRadius,
+                                    backgroundColor: Colors.blue[200],
+                                    child: Text(
+                                      user[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.blue[800],
+                                        fontSize: normalFontSize,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    index == 0 ? "online" : "offline",
-                                    style: TextStyle(
-                                      fontSize: smallFontSize,
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      padding: EdgeInsets.all(statusIndicatorSize * 0.5),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          width: 2,
+                                          color: Colors.white,
+                                        ),
+                                        borderRadius: BorderRadius.circular(statusIndicatorSize),
+                                        color: index == 0 ? Colors.green : Colors.red,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            PopupMenuButton<int>(
-                              icon: Icon(Icons.more_horiz),
-                              itemBuilder: (context) => [
-                                PopupMenuItem(
-                                  value: 1,
-                                  child: Row(
-                                    children: [
-                                      Text("Start Chat", style: TextStyle(color: greyColor)),
-                                      SizedBox(width: screenWidth * 0.05),
-                                      Icon(Icons.chat_outlined, color: greyColor),
-                                    ],
-                                  ),
+                              SizedBox(width: screenWidth * 0.025),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      user,
+                                      style: TextStyle(
+                                        fontSize: normalFontSize,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      index == 0 ? "online" : "offline",
+                                      style: TextStyle(
+                                        fontSize: smallFontSize,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                PopupMenuItem(
-                                  value: 2,
-                                  child: Row(
-                                    children: [
-                                      Text("Edit Contact", style: TextStyle(color: greyColor)),
-                                      SizedBox(width: screenWidth * 0.05),
-                                      Icon(Icons.edit_outlined, color: greyColor),
-                                    ],
+                              ),
+                              PopupMenuButton<int>(
+                                icon: Icon(Icons.more_horiz),
+                                itemBuilder: (context) => [
+                                  PopupMenuItem(
+                                    value: 1,
+                                    child: Row(
+                                      children: [
+                                        Text("Start Chat", style: TextStyle(color: greyColor)),
+                                        SizedBox(width: screenWidth * 0.05),
+                                        Icon(Icons.chat_outlined, color: greyColor),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const PopupMenuDivider(),
-                                PopupMenuItem(
-                                  value: 3,
-                                  child: Row(
-                                    children: [
-                                      Text("Delete user", style: TextStyle(color: greyColor)),
-                                      SizedBox(width: screenWidth * 0.05),
-                                      Icon(Icons.block_flipped, color: greyColor),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              offset: Offset(0, screenHeight * 0.05),
-                              color: Colors.white,
-                              elevation: 2,
-                              onSelected: (value) {
-                                if (value == 1) {
-                                  _startChat(user);
-                                } else if (value == 2) {
-                                  // Edit contact functionality
-                                } else if (value == 3) {
-                                  // Delete user functionality
-                                }
-                              },
-                            ),
-                          ],
+                                ],
+                                offset: Offset(0, screenHeight * 0.05),
+                                color: Colors.white,
+                                elevation: 2,
+                                onSelected: (value) {
+                                  if (value == 1) {
+                                    _startChat(user);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
               SizedBox(height: verticalPaddingLarge),
-              ElevatedButton(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all<Color>(blueColor!),
-                  shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(buttonBorderRadius),
-                    ),
-                  ),
-                ),
-                onPressed: () {},
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: screenHeight * 0.0125,
-                      horizontal: screenWidth * 0.0375,
-                    ),
-                    child: Text(
-                      "Add Friends",
-                      style: TextStyle(
-                        fontSize: boldFontSize - 3,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              // ElevatedButton(
+              //   style: ButtonStyle(
+              //     backgroundColor: WidgetStateProperty.all<Color>(blueColor!),
+              //     shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+              //       RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(buttonBorderRadius),
+              //       ),
+              //     ),
+              //   ),
+              //   onPressed: () {},
+              //   child: Center(
+              //     child: Padding(
+              //       padding: EdgeInsets.symmetric(
+              //         vertical: screenHeight * 0.0125,
+              //         horizontal: screenWidth * 0.0375,
+              //       ),
+              //       child: Text(
+              //         "Add Friends",
+              //         style: TextStyle(
+              //           fontSize: boldFontSize - 3,
+              //           fontWeight: FontWeight.w500,
+              //           color: Colors.white,
+              //         ),
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),

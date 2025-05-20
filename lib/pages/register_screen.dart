@@ -33,13 +33,9 @@ class RegisterScreen extends StatelessWidget {
                   _passwordController.text,
                 );
                 if (success) {
-                  Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => BottomNav()),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Registration successful! Please login')),
-                  );
-                } else {
+                  Navigator.pushReplacementNamed(context, '/chat');
+                }
+                else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Username already exists')),
                   );

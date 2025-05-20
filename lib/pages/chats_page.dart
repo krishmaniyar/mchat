@@ -59,6 +59,29 @@ class _ChatsPageState extends State<ChatsPage> {
     }
   }
 
+  Future<void> _clearMessages(String chatId) async {
+    try {
+      if (isDirect) {
+        await JsonHandler.clearDirectMessages(currentUser!, chatId);
+        setState(() {
+          chatMessages[chatId] = [];
+        });
+      } else {
+        await JsonHandler.clearGroupMessages(chatId);
+        setState(() {
+          groupMessages[chatId] = [];
+        });
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Messages cleared successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error clearing messages: ${e.toString()}')),
+      );
+    }
+  }
+
   String _getDirectChatId(String user1, String user2) {
     List<String> users = [user1, user2]..sort();
     return 'direct_${users[0]}_${users[1]}';
@@ -253,7 +276,7 @@ class _ChatsPageState extends State<ChatsPage> {
                               horizontal: screenWidth * 0.025,
                             ),
                             child: Text(
-                              "Groups",
+                              "Group",
                               style: TextStyle(
                                 fontSize: normalFontSize,
                                 fontWeight: FontWeight.w400,
@@ -371,6 +394,22 @@ class _ChatsPageState extends State<ChatsPage> {
                                   fontSize: tinyFontSize,
                                   color: greyColor,
                                 ),
+                              ),
+                              PopupMenuButton<String>(
+                                icon: Icon(Icons.more_vert, size: normalFontSize),
+                                onSelected: (value) {
+                                  if (value == 'clear') {
+                                    _clearMessages(item);
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) {
+                                  return [
+                                    PopupMenuItem<String>(
+                                      value: 'clear',
+                                      child: Text('Clear messages'),
+                                    ),
+                                  ];
+                                },
                               ),
                             ],
                           ),
