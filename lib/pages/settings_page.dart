@@ -26,8 +26,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _deleteAllChats() async {
-    _deleteAllGroupChats();
-    _deleteAllDirectChats();
+    await _deleteAllGroupChats();
+    await _deleteAllDirectChats();
   }
 
   Future<void> _deleteAllDirectChats() async {
@@ -43,7 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
         await JsonHandler.clearDirectMessages(currentUserId!, user);
       }));
 
-      _showSuccessSnackbar('All chats deleted successfully');
+      _showSuccessSnackbar('All Direct chats deleted successfully');
     } catch (e) {
       _showErrorSnackbar('Failed to delete chats: ${e.toString()}');
     } finally {
