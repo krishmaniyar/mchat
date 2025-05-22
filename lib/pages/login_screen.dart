@@ -25,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    SignalRService.initialize();
   }
 
   Future<void> authenticate() async {

@@ -23,7 +23,7 @@ class _ChatsPageState extends State<ChatsPage> {
   Map<String, List<Message>> groupMessages = {};
 
   @override
-  Future<void> initState() async {
+  void initState() {
     super.initState();
     _loadData();
   }
