@@ -135,28 +135,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onSubmitted: (_) => authenticate(),
                               ),
                               const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        rememberMe = value!;
-                                      });
-                                    },
-                                  ),
-                                  Text("Remember me",
-                                      style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
-                                  const Spacer(),
-                                  TextButton(
-                                    onPressed: () {
-                                      // Add password reset functionality
-                                    },
-                                    child: Text("Reset Password",
-                                        style: TextStyle(color: blueColor, fontSize: normalFontSize - 2)),
-                                  ),
-                                ],
-                              ),
+                              // Row(
+                              //   children: [
+                              //     Checkbox(
+                              //       value: rememberMe,
+                              //       onChanged: (value) {
+                              //         setState(() {
+                              //           rememberMe = value!;
+                              //         });
+                              //       },
+                              //     ),
+                              //     Text("Remember me",
+                              //         style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
+                              //     const Spacer(),
+                              //     TextButton(
+                              //       onPressed: () {
+                              //         // Add password reset functionality
+                              //       },
+                              //       child: Text("Reset Password",
+                              //           style: TextStyle(color: blueColor, fontSize: normalFontSize - 2)),
+                              //     ),
+                              //   ],
+                              // ),
                               const SizedBox(height: 15),
                               SizedBox(
                                 width: double.infinity,

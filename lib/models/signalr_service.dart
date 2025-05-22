@@ -9,6 +9,7 @@ class SignalRService {
           .withUrl(
         'https://uat.marwadionline.com/mchat/apichatHub',
         HttpConnectionOptions(
+          transport: HttpTransportType.longPolling,
           logging: (level, message) => print(message),
         ),
       ).build();

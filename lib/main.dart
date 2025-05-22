@@ -6,10 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'models/auth_handler.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // WidgetsFlutterBinding.ensureInitialized();
   await AuthHandler.initialize();
-  await FlutterDownloader.initialize();
-  await Permission.storage.request();
+  // await FlutterDownloader.initialize();
+  // await Permission.storage.request();
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
