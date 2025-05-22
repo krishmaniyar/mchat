@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mchat/pages/bottomnav.dart';
 import 'package:mchat/pages/register_screen.dart';
 import '../models/auth_handler.dart';
+import '../models/signalr_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +21,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool rememberMe = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SignalRService.initialize();
+  }
 
   Future<void> authenticate() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {

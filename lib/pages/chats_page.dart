@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/auth_handler.dart';
 import '../models/json_handler.dart';
+import '../models/signalr_service.dart';
 import 'chatting_page.dart';
 import 'group_chat_page.dart';
 
@@ -22,7 +23,7 @@ class _ChatsPageState extends State<ChatsPage> {
   Map<String, List<Message>> groupMessages = {};
 
   @override
-  void initState() {
+  Future<void> initState() async {
     super.initState();
     _loadData();
   }
