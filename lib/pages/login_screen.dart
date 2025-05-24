@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mchat/models/chat_api_service.dart';
 import 'package:mchat/pages/bottomnav.dart';
-import 'package:mchat/pages/register_screen.dart';
 import '../models/auth_handler.dart';
 import '../models/signalr_service.dart';
 
@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    SignalRService.initialize();
   }
 
   Future<void> authenticate() async {
@@ -40,12 +41,15 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final success = await AuthHandler.loginUser(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
 
-      if (success) {
+      var response = await ChatApiService.login(
+        _usernameController.text.trim(),
+        _passwordController.text.trim()
+      );
+      await AuthHandler.saveLoginData(response as Map<String, dynamic>);
+      print('Login Response: $response');
+
+      if (response.isNotEmpty) {
         Navigator.pushReplacementNamed(context, '/chat');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -134,28 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onSubmitted: (_) => authenticate(),
                               ),
                               const SizedBox(height: 20),
-                              // Row(
-                              //   children: [
-                              //     Checkbox(
-                              //       value: rememberMe,
-                              //       onChanged: (value) {
-                              //         setState(() {
-                              //           rememberMe = value!;
-                              //         });
-                              //       },
-                              //     ),
-                              //     Text("Remember me",
-                              //         style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
-                              //     const Spacer(),
-                              //     TextButton(
-                              //       onPressed: () {
-                              //         // Add password reset functionality
-                              //       },
-                              //       child: Text("Reset Password",
-                              //           style: TextStyle(color: blueColor, fontSize: normalFontSize - 2)),
-                              //     ),
-                              //   ],
-                              // ),
                               const SizedBox(height: 15),
                               SizedBox(
                                 width: double.infinity,
@@ -169,36 +151,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         const EdgeInsets.symmetric(vertical: 15)),
                                   ),
                                   onPressed: _isLoading ? null : authenticate,
-                                  child: _isLoading
-                                      ? SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                      : Text("Sign in",
+                                  child: Text("Sign in",
                                       style: TextStyle(color: Colors.white, fontSize: boldFontSize)),
                                 ),
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text("Don't have an account?",
-                                      style: TextStyle(fontSize: normalFontSize - 2, color: greyColor)),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => RegisterScreen()),
-                                      );
-                                    },
-                                    child: Text("Sign Up",
-                                        style: TextStyle(fontSize: normalFontSize - 2, color: blueColor)),
-                                  ),
-                                ],
                               ),
                             ],
                           ),

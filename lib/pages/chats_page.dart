@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/auth_handler.dart';
-import '../models/json_handler.dart';
-import '../models/signalr_service.dart';
+import '../models/chat_api_service.dart';
 import 'chatting_page.dart';
 import 'group_chat_page.dart';
 
@@ -14,32 +13,30 @@ class ChatsPage extends StatefulWidget {
 
 class _ChatsPageState extends State<ChatsPage> {
   bool isDirect = true;
+  late int userid;
   final TextEditingController searchController = TextEditingController();
-  List<String> users = [];
-  List<String> groups = [];
   bool isLoading = true;
-  String? currentUser;
-  Map<String, List<Message>> chatMessages = {};
-  Map<String, List<Message>> groupMessages = {};
+  List<dynamic> chatList = [];
+  List<dynamic> filteredChatList = [];
 
   @override
-  void initState() {
+  initState() {
     super.initState();
-    _loadData();
+    _loadChatList();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadChatList() async {
+    userid = await AuthHandler.getUserId();
     setState(() => isLoading = true);
     try {
-      currentUser = await AuthHandler.getCurrentUser();
-      final allUsers = await AuthHandler.getAllUsers();
-      users = allUsers.where((user) => user != currentUser).toList();
-      groups = await AuthHandler.getUserGroups(currentUser!);
-      await _loadAllMessages();
+      final type = isDirect ? 1 : 0;
+      final response = await ChatApiService.getChatList(userid, type);
+      setState(() {
+        chatList = response;
+        filteredChatList = chatList;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: ${e.toString()}')),
-      );
+      print("Error loading chat");
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -47,45 +44,44 @@ class _ChatsPageState extends State<ChatsPage> {
     }
   }
 
-  Future<void> _loadAllMessages() async {
-    for (final user in users) {
-      final directChatId = _getDirectChatId(currentUser!, user);
-      final messages = await JsonHandler.readDirectMessages(currentUser!, user);
-      chatMessages[user] = messages;
-    }
-
-    for (final group in groups) {
-      final messages = await JsonHandler.readGroupMessages(group);
-      groupMessages[group] = messages;
-    }
+  void _filterDirectChats() {
+    final query = searchController.text.toLowerCase();
+    setState(() {
+      filteredChatList = chatList.where((chat) {
+        return chat['user'][1]["userName"].toString().toLowerCase().contains(query);
+      }).toList();
+    });
   }
 
-  Future<void> _clearMessages(String chatId) async {
-    try {
-      if (isDirect) {
-        await JsonHandler.clearDirectMessages(currentUser!, chatId);
-        setState(() {
-          chatMessages[chatId] = [];
-        });
-      } else {
-        await JsonHandler.clearGroupMessages(chatId);
-        setState(() {
-          groupMessages[chatId] = [];
-        });
+  void _filterChats() {
+    final query = searchController.text.toLowerCase();
+    setState(() {
+      filteredChatList = chatList.where((chat) {
+        return chat['name'].toString().toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  String _getDisplayName(Map<String, dynamic> chat, int currentUserId) {
+    if (chat['type'] == 1 && chat['user'] != null && chat['user'].length >= 2) {
+      for (var user in chat['user']) {
+        if (user['userId'] != currentUserId) {
+          return user['userName'] ?? 'Unknown';
+        }
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Messages cleared successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error clearing messages: ${e.toString()}')),
-      );
     }
+    return chat['name'] ?? 'Unknown';
   }
 
-  String _getDirectChatId(String user1, String user2) {
-    List<String> users = [user1, user2]..sort();
-    return 'direct_${users[0]}_${users[1]}';
+  Future<String> _getLastMessage(int chatId) async {
+    try {
+      List response = await ChatApiService.getChatMessages(chatId);
+      print(response[-1]['text']);
+      return response[-1]['text'];
+    }
+    catch (e) {
+      return 'No Message yet';
+    }
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -100,53 +96,6 @@ class _ChatsPageState extends State<ChatsPage> {
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
     }
-  }
-
-  String _getLastMessagePreview(String chatId) {
-    final messages = isDirect
-        ? chatMessages[chatId] ?? []
-        : groupMessages[chatId] ?? [];
-
-    if (messages.isEmpty) return "No messages yet";
-    final lastMessage = messages.last;
-    if (lastMessage.isFile) {
-      return "📄 ${lastMessage.fileName ?? 'File'}";
-    }
-    return lastMessage.content.length > 30
-        ? '${lastMessage.content.substring(0, 30)}...'
-        : lastMessage.content;
-  }
-
-  DateTime _getLastMessageTime(String chatId) {
-    final messages = isDirect
-        ? chatMessages[chatId] ?? []
-        : groupMessages[chatId] ?? [];
-    return messages.isNotEmpty ? messages.last.timestamp : DateTime(0);
-  }
-
-  List<String> _getFilteredAndSortedChats() {
-    final currentMap = isDirect ? chatMessages : groupMessages;
-    final allChats = isDirect ? users : groups;
-
-    // Filter chats that have at least one message
-    var chatsWithMessages = allChats.where((chat) {
-      final messages = currentMap[chat] ?? [];
-      return messages.isNotEmpty;
-    }).toList();
-
-    chatsWithMessages = isDirect ? chatsWithMessages : groups;
-
-    // Sort by most recent message time (newest first)
-    chatsWithMessages.sort((a, b) {
-      final timeA = _getLastMessageTime(a);
-      final timeB = _getLastMessageTime(b);
-      return timeB.compareTo(timeA);
-    });
-
-    // Apply search filter
-    return chatsWithMessages.where((item) =>
-        item.toLowerCase().contains(searchController.text.toLowerCase())
-    ).toList();
   }
 
   @override
@@ -173,8 +122,6 @@ class _ChatsPageState extends State<ChatsPage> {
     final containerBorderRadius = screenWidth * 0.035;
     final statusIndicatorSize = screenWidth * 0.035;
     final buttonBorderRadius = screenWidth * 0.025;
-
-    final filteredList = _getFilteredAndSortedChats();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -221,7 +168,7 @@ class _ChatsPageState extends State<ChatsPage> {
                   filled: true,
                   fillColor: Colors.grey[300],
                 ),
-                onChanged: (value) => setState(() {}),
+                onChanged: (value) => isDirect ? _filterDirectChats() : _filterChats(),
               ),
               SizedBox(height: verticalPaddingMedium),
               Row(
@@ -244,7 +191,12 @@ class _ChatsPageState extends State<ChatsPage> {
                               ),
                             ),
                           ),
-                          onPressed: () => setState(() => isDirect = true),
+                          onPressed: () {
+                            setState(() {
+                              isDirect = true;
+                              _loadChatList();
+                            });
+                          },
                           child: Padding(
                             padding: EdgeInsets.symmetric(
                               vertical: screenHeight * 0.00625,
@@ -270,7 +222,12 @@ class _ChatsPageState extends State<ChatsPage> {
                               ),
                             ),
                           ),
-                          onPressed: () => setState(() => isDirect = false),
+                          onPressed: () {
+                            setState(() {
+                              isDirect = false;
+                              _loadChatList();
+                            });
+                          },
                           child: Padding(
                             padding: EdgeInsets.symmetric(
                               vertical: screenHeight * 0.00625,
@@ -295,30 +252,37 @@ class _ChatsPageState extends State<ChatsPage> {
 
               if (isLoading)
                 Center(child: CircularProgressIndicator())
-              else if (filteredList.isEmpty)
+              else if (filteredChatList.isEmpty)
                 Center(child: Text(
-                    isDirect ? "No chats found" : "No group chats found",
+                    isDirect ? "No direct chats found" : "No group chats found",
                     style: TextStyle(fontSize: normalFontSize)
                 ))
               else
                 Expanded(
                   child: ListView.builder(
-                    itemCount: filteredList.length,
+                    itemCount: filteredChatList.length,
                     itemBuilder: (context, index) {
-                      final item = filteredList[index];
-                      final lastMessage = _getLastMessagePreview(item);
-                      final lastMessageTime = _getLastMessageTime(item);
-
+                      final chat = filteredChatList[index];
+                      final chatName = _getDisplayName(chat, userid);
+                      final uniqueId = chat['uniqueIdentifier'] ?? '';
+                      final lastMessage = _getLastMessage(chat['chatId']);
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => isDirect
-                                  ? ChattingPage(contactName: item, isGroup: false)
-                                  : GroupChatPage(groupName: item),
+                                ? ChattingPage(
+                                  contactName: chatName,
+                                  isGroup: false,
+                                  chatId: chat['chatId'],
+                                )
+                                : GroupChatPage(
+                                  groupName: chatName,
+                                  chatId: chat['chatId'],
+                                ),
                             ),
-                          ).then((_) => _loadData());
+                          );
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(
@@ -342,7 +306,7 @@ class _ChatsPageState extends State<ChatsPage> {
                                     radius: avatarRadius,
                                     backgroundColor: Colors.blue[200],
                                     child: Text(
-                                      item[0].toUpperCase(),
+                                      chatName.isNotEmpty ? chatName[0].toUpperCase() : '?',
                                       style: TextStyle(
                                         color: Colors.blue[800],
                                         fontSize: normalFontSize,
@@ -360,7 +324,7 @@ class _ChatsPageState extends State<ChatsPage> {
                                           color: Colors.white,
                                         ),
                                         borderRadius: BorderRadius.circular(statusIndicatorSize),
-                                        color: index % 2 == 0 ? Colors.green : Colors.red,
+                                        color: chat['user'][1]['status'] == 1 ? Colors.green : Colors.red,
                                       ),
                                     ),
                                   ),
@@ -372,14 +336,14 @@ class _ChatsPageState extends State<ChatsPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      item,
+                                      chatName,
                                       style: TextStyle(
                                         fontSize: normalFontSize,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                     Text(
-                                      lastMessage,
+                                      uniqueId,
                                       style: TextStyle(
                                         fontSize: smallFontSize,
                                       ),
@@ -390,7 +354,7 @@ class _ChatsPageState extends State<ChatsPage> {
                               ),
                               SizedBox(width: screenWidth * 0.025),
                               Text(
-                                _formatDateTime(lastMessageTime),
+                                _formatDateTime(DateTime.now()), // Using current time as placeholder
                                 style: TextStyle(
                                   fontSize: tinyFontSize,
                                   color: greyColor,
@@ -400,7 +364,7 @@ class _ChatsPageState extends State<ChatsPage> {
                                 icon: Icon(Icons.more_vert, size: normalFontSize),
                                 onSelected: (value) {
                                   if (value == 'clear') {
-                                    _clearMessages(item);
+                                    // Implement clear functionality if needed
                                   }
                                 },
                                 itemBuilder: (BuildContext context) {

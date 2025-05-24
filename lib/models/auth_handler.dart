@@ -1,153 +1,91 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthHandler {
-  static const String _currentUserKey = 'current_user';
-  static const String usersKey = 'registered_users';
-  static const String userGroupsKey = 'user_groups';
-  static const String allGroupsKey = 'all_groups';
+  static const _userIdKey = 'user_id';
+  static const _userNameKey = 'user_name';
+  static const _emailKey = 'user_email';
+  static const _phoneNumberKey = 'phone_number';
+  static const _statusKey = 'user_status';
+  static const _guidKey = 'user_guid';
 
-  static Future<void> initialize() async {
-    WidgetsFlutterBinding.ensureInitialized();
-  }
 
-  static Future<bool> registerUser(String username, String password) async {
+  // Save login response
+  static Future<void> saveLoginData(Map<String, dynamic> response) async {
     final prefs = await SharedPreferences.getInstance();
-    final users = prefs.getStringList(usersKey) ?? [];
-
-    if (users.contains(username)) {
-      debugPrint('User already exists');
-      return false;
-    }
-
-    users.add(username);
-    await prefs.setStringList(usersKey, users);
-    await prefs.setString('${username}_password', password);
-    await prefs.setStringList('${username}_$userGroupsKey', []);
-    return true;
+    await prefs.setInt(_userIdKey, response['userId'] ?? 0);
+    await prefs.setString(_userNameKey, response['userName'] ?? '');
+    await prefs.setString(_emailKey, response['email'] ?? '');
+    await prefs.setString(_phoneNumberKey, response['phoneNumber'] ?? '');
+    await prefs.setInt(_statusKey, response['status'] ?? 0);
+    await prefs.setString(_guidKey, response['guid'] ?? '');
   }
 
-  static Future<bool> loginUser(String username, String password) async {
+  // Check if user is logged in
+  static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    final storedPassword = prefs.getString('${username}_password');
-
-    if (storedPassword == password) {
-      await prefs.setString(_currentUserKey, username);
-      return true;
-    }
-    return false;
+    return prefs.getInt(_userIdKey) != null &&
+        prefs.getString(_guidKey) != null;
   }
 
+  // Get user ID
+  static Future<int> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_userIdKey) ?? 0;
+  }
+
+  // Get user name
+  static Future<String> getUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userNameKey) ?? '';
+  }
+
+  // Get user email
+  static Future<String> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_emailKey) ?? '';
+  }
+
+  // Get phone number
+  static Future<String> getPhoneNumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_phoneNumberKey) ?? '';
+  }
+
+  // Get status
+  static Future<int> getStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_statusKey) ?? 0;
+  }
+
+  // Get GUID
+  static Future<String> getGuid() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_guidKey) ?? '';
+  }
+
+  // Get all user data
+  static Future<Map<String, dynamic>> getUserData() async {
+    return {
+      'userId': await getUserId(),
+      'userName': await getUserName(),
+      'email': await getEmail(),
+      'phoneNumber': await getPhoneNumber(),
+      'status': await getStatus(),
+      'guid': await getGuid(),
+    };
+  }
+
+  // Logout
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_currentUserKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_userNameKey);
+    await prefs.remove(_emailKey);
+    await prefs.remove(_phoneNumberKey);
+    await prefs.remove(_statusKey);
+    await prefs.remove(_guidKey);
   }
 
-  static Future<String?> getCurrentUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_currentUserKey);
-  }
-
-  static Future<bool> isLoggedIn() async {
-    return await getCurrentUser() != null;
-  }
-
-  static Future<bool> createGroup(String groupName, List<String> members) async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentUser = await getCurrentUser();
-
-    if (currentUser == null) return false;
-
-    if (!members.contains(currentUser)) {
-      members.add(currentUser);
-    }
-
-    final allGroups = prefs.getStringList(allGroupsKey) ?? [];
-
-    if (allGroups.contains(groupName)) {
-      debugPrint('Group already exists');
-      return false;
-    }
-
-    allGroups.add(groupName);
-    await prefs.setStringList(allGroupsKey, allGroups);
-
-    for (final member in members) {
-      final userGroups = prefs.getStringList('${member}_$userGroupsKey') ?? [];
-      if (!userGroups.contains(groupName)) {
-        userGroups.add(groupName);
-        await prefs.setStringList('${member}_$userGroupsKey', userGroups);
-      }
-    }
-
-    await prefs.setStringList('group_${groupName}_members', members);
-    return true;
-  }
-
-  static Future<bool> addUserToGroup(String groupName, String username) async {
-    final prefs = await SharedPreferences.getInstance();
-    final allGroups = prefs.getStringList(allGroupsKey) ?? [];
-    if (!allGroups.contains(groupName)) {
-      debugPrint('Group does not exist');
-      return false;
-    }
-
-    final users = prefs.getStringList(usersKey) ?? [];
-    if (!users.contains(username)) {
-      debugPrint('User does not exist');
-      return false;
-    }
-
-    final members = prefs.getStringList('group_${groupName}_members') ?? [];
-    if (!members.contains(username)) {
-      members.add(username);
-      await prefs.setStringList('group_${groupName}_members', members);
-    }
-
-    final userGroups = prefs.getStringList('${username}_$userGroupsKey') ?? [];
-    if (!userGroups.contains(groupName)) {
-      userGroups.add(groupName);
-      await prefs.setStringList('${username}_$userGroupsKey', userGroups);
-    }
-
-    return true;
-  }
-
-  static Future<bool> removeUserFromGroup(String groupName, String username) async {
-    final prefs = await SharedPreferences.getInstance();
-    final members = prefs.getStringList('group_${groupName}_members') ?? [];
-    members.remove(username);
-    await prefs.setStringList('group_${groupName}_members', members);
-
-    final userGroups = prefs.getStringList('${username}_$userGroupsKey') ?? [];
-    userGroups.remove(groupName);
-    await prefs.setStringList('${username}_$userGroupsKey', userGroups);
-    return true;
-  }
-
-  static Future<List<String>> getUserGroups(String username) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('${username}_$userGroupsKey') ?? [];
-  }
-
-  static Future<List<String>> getGroupMembers(String groupName) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('group_${groupName}_members') ?? [];
-  }
-
-  static Future<List<String>> getAllGroups() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(allGroupsKey) ?? [];
-  }
-
-  static Future<bool> isUserInGroup(String username, String groupName) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userGroups = prefs.getStringList('${username}_$userGroupsKey') ?? [];
-    return userGroups.contains(groupName);
-  }
-
-  static Future<List<String>> getAllUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(usersKey) ?? [];
-  }
 }

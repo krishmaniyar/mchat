@@ -4,12 +4,9 @@ import 'package:mchat/pages/bottomnav.dart';
 import 'package:mchat/pages/login_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'models/auth_handler.dart';
-import 'models/signalr_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SignalRService.initialize();
-  await AuthHandler.initialize();
   await FlutterDownloader.initialize();
   await Permission.storage.request();
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/auth_handler.dart';
+import '../models/chat_api_service.dart';
 import 'chats_page.dart'; // Import your ChatsPage
 
 class CreateGroupPage extends StatefulWidget {
@@ -12,10 +13,11 @@ class CreateGroupPage extends StatefulWidget {
 class _CreateGroupPageState extends State<CreateGroupPage> {
   final TextEditingController searchController = TextEditingController();
   final TextEditingController groupController = TextEditingController();
-  List<String> allUsers = [];
-  List<String> selectedUsers = [];
-  List<String> filteredUsers = [];
+  List<int> selectedUserIds = [];
+  List<Map<String, dynamic>> filteredUsers = [];
   bool isLoading = false;
+  List<Map<String, dynamic>> users = [];
+
 
   @override
   void initState() {
@@ -27,14 +29,15 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   Future<void> _loadUsers() async {
     setState(() => isLoading = true);
     try {
-      final currentUser = await AuthHandler.getCurrentUser();
-      final users = await AuthHandler.getAllUsers();
-      users.remove(currentUser);
-
-      setState(() {
-        allUsers = users;
-        filteredUsers = users;
-      });
+      final currentUserId = await AuthHandler.getUserId();
+      final response = await ChatApiService.getFriends(
+        currentUserId,
+        await AuthHandler.getGuid(),
+      );
+      if (response != null) {
+        users = List<Map<String, dynamic>>.from(response as Iterable);
+      }
+      filteredUsers = users;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load users: ${e.toString()}')),
@@ -47,18 +50,19 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   void _filterUsers() {
     final query = searchController.text.toLowerCase();
     setState(() {
-      filteredUsers = allUsers.where((user) =>
-          user.toLowerCase().contains(query)
+      filteredUsers = users.where((user) =>
+          user['userName'].toString().toLowerCase().contains(query)
       ).toList();
     });
   }
 
-  void _toggleUserSelection(String user) {
+  void _toggleUserSelection(Map<String, dynamic> user) {
     setState(() {
-      if (selectedUsers.contains(user)) {
-        selectedUsers.remove(user);
+      final userId = user['userId'];
+      if (selectedUserIds.contains(userId)) {
+        selectedUserIds.remove(userId);
       } else {
-        selectedUsers.add(user);
+        selectedUserIds.add(userId);
       }
     });
   }
@@ -71,7 +75,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       return;
     }
 
-    if (selectedUsers.isEmpty) {
+    if (selectedUserIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select at least one member')),
       );
@@ -80,24 +84,16 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
     setState(() => isLoading = true);
     try {
-      final success = await AuthHandler.createGroup(
+      final userId = await AuthHandler.getUserId();
+      final response = await ChatApiService.createGroups(
         groupController.text.trim(),
-        selectedUsers,
+        selectedUserIds,
+        userId,
       );
-
-      if (success) {
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => ChatsPage()),
-        // );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Group created successfully!')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create group. It may already exist.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Group created successfully!')),
+      );
+      selectedUserIds.clear();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error creating group: ${e.toString()}')),
@@ -221,20 +217,24 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
               ),
               SizedBox(height: verticalPaddingMedium),
               // Selected Users Preview
-              if (selectedUsers.isNotEmpty) ...[
+              if (selectedUserIds.isNotEmpty) ...[
                 SizedBox(
                   height: 60,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: selectedUsers.length,
+                    itemCount: selectedUserIds.length,
                     itemBuilder: (context, index) {
-                      final user = selectedUsers[index];
+                      final userId = selectedUserIds[index];
+                      final user = users.firstWhere(
+                            (u) => u['userId'] == userId,
+                        orElse: () => {'userId': userId, 'userName': 'Unknown'},
+                      );
                       return Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Chip(
-                          label: Text(user),
+                          label: Text(user['userName']),
                           avatar: CircleAvatar(
-                            child: Text(user.substring(0, 1)),
+                            child: Text(user['userName'].toString().substring(0, 1)),
                           ),
                           onDeleted: () => _toggleUserSelection(user),
                         ),
@@ -252,7 +252,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                     : SingleChildScrollView(
                   child: Column(
                     children: filteredUsers.map((user) {
-                      final isSelected = selectedUsers.contains(user);
+                      final isSelected = selectedUserIds.contains(user['userId']);
                       return Container(
                         margin: EdgeInsets.only(bottom: verticalPaddingMedium),
                         padding: EdgeInsets.symmetric(
@@ -277,7 +277,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                   radius: avatarRadius,
                                   backgroundColor: Colors.blue[200],
                                   child: Text(
-                                    user.substring(0, 1).toUpperCase(),
+                                    user['userName'].toString().substring(0, 1).toUpperCase(),
                                     style: TextStyle(
                                       color: Colors.blue[800],
                                       fontSize: normalFontSize,
@@ -307,7 +307,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    user,
+                                    user['userName'],
                                     style: TextStyle(
                                       fontSize: normalFontSize,
                                       fontWeight: FontWeight.w700,
@@ -350,16 +350,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                       vertical: screenHeight * 0.0125,
                       horizontal: screenWidth * 0.0375,
                     ),
-                    child: isLoading
-                        ? SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                        : Text(
+                    child: Text(
                       "Create Group",
                       style: TextStyle(
                         fontSize: boldFontSize - 3,

@@ -7,16 +7,18 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
-import '../models/json_handler.dart';
 import '../models/auth_handler.dart';
+import '../models/chat_api_service.dart';
 
 class ChattingPage extends StatefulWidget {
   final String contactName;
   final bool isGroup;
+  final int chatId;
 
   const ChattingPage({
     super.key,
     required this.contactName,
+    required this.chatId,
     this.isGroup = false,
   });
 
@@ -45,12 +47,15 @@ class _ChattingPageState extends State<ChattingPage> {
 
   String selectedOption = 'Off';
   final TextEditingController messageController = TextEditingController();
-  List<Message> messages = [];
-  Timer? _expirationTimer;
+  List<dynamic> messages = [];
+  Timer? _messageFetchTimer;
   bool _showAttachmentPanel = false;
-  List<PlatformFile> _selectedFiles = [];
+  List<File> _selectedFiles = [];
   final Dio _dio = Dio();
-  String? currentUserId;
+  bool isLoading = true;
+  late final userId;
+  late final userName;
+  late final userGuid;
 
   @override
   void initState() {
@@ -59,112 +64,68 @@ class _ChattingPageState extends State<ChattingPage> {
   }
 
   Future<void> _initializeChat() async {
-    await _loadCurrentUser();
+    userId = await AuthHandler.getUserId();
+    userName = await AuthHandler.getUserName();
+    userGuid = await AuthHandler.getGuid();
     await _loadMessages();
-    _startExpirationTimer();
-    await FlutterDownloader.initialize(debug: true);
-  }
-
-  Future<void> _loadCurrentUser() async {
-    currentUserId = await AuthHandler.getCurrentUser();
-    if (mounted) setState(() {});
+    _startMessageFetchTimer();
   }
 
   Future<void> _loadMessages() async {
-    final loadedMessages = widget.isGroup
-        ? await JsonHandler.readGroupMessages(widget.contactName)
-        : await JsonHandler.readDirectMessages(currentUserId!, widget.contactName);
-
-    if (mounted) {
-      setState(() {
-        messages = loadedMessages;
-      });
+    try {
+      final response = await ChatApiService.getChatMessages(widget.chatId);
+      if (mounted) {
+        setState(() {
+          messages = response;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading messages: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  void _startExpirationTimer() {
-    _expirationTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
-      await _checkForExpiredMessages();
+  void _startMessageFetchTimer() {
+    _messageFetchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await _loadMessages();
     });
   }
 
-  Future<void> _checkForExpiredMessages() async {
-    final currentMessages = widget.isGroup
-        ? await JsonHandler.readGroupMessages(widget.contactName)
-        : await JsonHandler.readDirectMessages(currentUserId!, widget.contactName);
-
-    if (mounted && currentMessages.length != messages.length) {
-      setState(() => messages = currentMessages);
-    }
-  }
-
-  Duration? _getDurationFromOption(String option) {
-    switch (option) {
-      case '1 Minute': return const Duration(minutes: 1);
-      case '5 Minute': return const Duration(minutes: 5);
-      case '1 Hour': return const Duration(hours: 1);
-      case '8 Hour': return const Duration(hours: 8);
-      case '12 Hour': return const Duration(hours: 12);
-      case '1 Day': return const Duration(days: 1);
-      case '1 Week': return const Duration(days: 7);
-      case '1 Month': return const Duration(days: 30);
-      case '1 Year': return const Duration(days: 365);
-      default: return null;
-    }
-  }
-
   Future<void> _sendMessage() async {
-    if (messageController.text.trim().isEmpty || currentUserId == null) return;
+    if (messageController.text.trim().isEmpty || userId == null) return;
 
-    final newMessage = Message(
-      sender: currentUserId!,
-      content: messageController.text,
-      timestamp: DateTime.now(),
-      isSender: currentUserId!,
-      expiresAfter: _getDurationFromOption(selectedOption),
-    );
-
-    if (widget.isGroup) {
-      await JsonHandler.addGroupMessage(newMessage, widget.contactName);
-    } else {
-      await JsonHandler.addDirectMessage(newMessage, currentUserId!, widget.contactName);
-    }
-
-    if (mounted) {
-      messageController.clear();
+    try {
+      await ChatApiService.sendMessage(widget.chatId, userId, userName, messageController.text, userGuid);
       await _loadMessages();
+      messageController.clear();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending message: ${e.toString()}')),
+      );
     }
   }
 
   Future<void> _sendFiles() async {
-    if (_selectedFiles.isEmpty || currentUserId == null) return;
+    if (_selectedFiles.isEmpty || userId == null) return;
 
-    for (final file in _selectedFiles) {
-      final newMessage = Message(
-        sender: currentUserId!,
-        content: file.name,
-        timestamp: DateTime.now(),
-        isSender: currentUserId!,
-        isFile: true,
-        expiresAfter: _getDurationFromOption(selectedOption),
-        fileName: file.name,
-        fileType: path.extension(file.name).replaceFirst('.', ''),
-        fileUrl: 'https://example.com/${file.name}',
-      );
-
-      if (widget.isGroup) {
-        await JsonHandler.addGroupMessage(newMessage, widget.contactName);
-      } else {
-        await JsonHandler.addDirectMessage(newMessage, currentUserId!, widget.contactName);
-      }
-    }
-
-    if (mounted) {
+    try {
+      await ChatApiService.sendMessageFile(widget.chatId, userId, userName, messageController.text, userGuid, _selectedFiles);
+      await _loadMessages();
+      messageController.clear();
       setState(() {
         _selectedFiles.clear();
         _showAttachmentPanel = false;
       });
       await _loadMessages();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending files: ${e.toString()}')),
+      );
     }
   }
 
@@ -176,7 +137,10 @@ class _ChattingPageState extends State<ChattingPage> {
       );
 
       if (result != null && mounted) {
-        setState(() => _selectedFiles.addAll(result.files));
+        setState(() {
+          // Convert PlatformFile to File objects
+          _selectedFiles.addAll(result.files.map((platformFile) => File(platformFile.path!)));
+        });
       }
     } catch (e) {
       _showErrorSnackbar('File picking error: $e');
@@ -189,35 +153,31 @@ class _ChattingPageState extends State<ChattingPage> {
     }
   }
 
-  Future<void> _deleteMessage(Message message) async {
-    if (message.sender != currentUserId) return;
+  Future<void> _deleteMessage(dynamic message) async {
+    if (message['userId'] != userId) return;
 
-    if (widget.isGroup) {
-      await JsonHandler.deleteGroupMessage(message, widget.contactName);
-    } else {
-      await JsonHandler.deleteDirectMessage(message, currentUserId!, widget.contactName);
+    try {
+      await ChatApiService.deleteMessage(message['chatId'], message['messageId'], message['userId'], message['uid']);
+      await _loadMessages();
+      _showInfoSnackbar('Message deleted');
+    } catch (e) {
+      _showErrorSnackbar('Error deleting message: ${e.toString()}');
     }
-
-    if (mounted) await _loadMessages();
   }
 
-  Future<void> _toggleFavorite(Message message) async {
-    if (widget.isGroup) {
-      await JsonHandler.toggleFavoriteGroupMessage(message, widget.contactName);
-    } else {
-      await JsonHandler.toggleFavoriteDirectMessage(
-          message,
-          currentUserId!,
-          widget.contactName
-      );
+  Future<void> _toggleFavorite(dynamic message) async {
+    try {
+      await ChatApiService.markStarMessage(message['chatId'], message['uid'], message['userId'], message['isStarMark'] ? 0 : 1);
+      await _loadMessages();
+      _showInfoSnackbar('Message favorite status updated');
+    } catch (e) {
+      _showErrorSnackbar('Error updating favorite: ${e.toString()}');
     }
-
-    if (mounted) await _loadMessages();
   }
 
-  Future<void> _downloadFile(Message message) async {
-    if (message.fileUrl == null || message.fileUrl!.isEmpty) {
-      _showErrorSnackbar('No download URL available');
+  Future<void> _downloadFile(dynamic message) async {
+    if (message['fileName'] == null) {
+      _showErrorSnackbar('No file to download');
       return;
     }
 
@@ -243,14 +203,14 @@ class _ChattingPageState extends State<ChattingPage> {
         throw Exception('Cannot access download directory');
       }
 
-      final fileName = message.fileName ??
-          'file_${DateTime.now().millisecondsSinceEpoch}.${message.fileType ?? 'dat'}';
+      final fileName = message['fileName'];
       final savePath = path.join(directory.path, fileName);
 
       _showInfoSnackbar('Downloading $fileName...');
 
+      // TODO: Replace with actual file download URL
       await _dio.download(
-        message.fileUrl!,
+        'https://example.com/files/${message['fileName']}',
         savePath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
@@ -264,7 +224,7 @@ class _ChattingPageState extends State<ChattingPage> {
       if (Platform.isAndroid) {
         try {
           await FlutterDownloader.enqueue(
-            url: message.fileUrl!,
+            url: 'https://example.com/files/${message['fileName']}',
             savedDir: directory.path,
             fileName: fileName,
             showNotification: true,
@@ -314,7 +274,7 @@ class _ChattingPageState extends State<ChattingPage> {
 
   @override
   void dispose() {
-    _expirationTimer?.cancel();
+    _messageFetchTimer?.cancel();
     _dio.close();
     messageController.dispose();
     super.dispose();
@@ -412,15 +372,19 @@ class _ChattingPageState extends State<ChattingPage> {
             ),
             const Divider(),
             Expanded(
-              child: ListView.builder(
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : ListView.builder(
                 reverse: true,
                 padding: const EdgeInsets.all(16),
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
                   final message = messages[messages.length - 1 - index];
-                  final isSender = message.isSender == currentUserId;
+                  final isSender = message['userId'] == userId;
+                  final hasFile = message['fileName'] != null;
+                  final hasText = message['text'] != null;
 
-                  return message.isFile
+                  return hasFile
                       ? _buildFileMessageBubble(message, isSender: isSender)
                       : _buildTextMessageBubble(message, isSender: isSender);
                 },
@@ -444,10 +408,10 @@ class _ChattingPageState extends State<ChattingPage> {
                     else
                       ..._selectedFiles.map((file) => ListTile(
                         leading: Icon(
-                          _getFileIcon(file.name),
+                          _getFileIcon(file.path),
                           color: Colors.blue[700],
                         ),
-                        title: Text(file.name, overflow: TextOverflow.ellipsis),
+                        title: Text(path.basename(file.path), overflow: TextOverflow.ellipsis),
                         trailing: IconButton(
                           icon: Icon(Icons.close, color: Colors.red),
                           onPressed: () => _removeFile(_selectedFiles.indexOf(file)),
@@ -516,7 +480,7 @@ class _ChattingPageState extends State<ChattingPage> {
     );
   }
 
-  Widget _buildFileMessageBubble(Message message, {required bool isSender}) {
+  Widget _buildFileMessageBubble(dynamic message, {required bool isSender}) {
     return Column(
       crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
@@ -538,7 +502,7 @@ class _ChattingPageState extends State<ChattingPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _getFileIcon(message.fileName),
+                        _getFileIcon(message['fileName']),
                         size: 30,
                         color: isSender ? Colors.white : Colors.black,
                       ),
@@ -547,7 +511,7 @@ class _ChattingPageState extends State<ChattingPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            message.fileName ?? 'File',
+                            message['fileName'] ?? 'File',
                             style: TextStyle(
                               fontSize: normalFontSize - 2,
                               fontWeight: FontWeight.w700,
@@ -555,7 +519,7 @@ class _ChattingPageState extends State<ChattingPage> {
                             ),
                           ),
                           Text(
-                            message.fileType?.toUpperCase() ?? 'FILE',
+                            path.extension(message['fileName'] ?? '').toUpperCase(),
                             style: TextStyle(
                               fontSize: normalFontSize - 4,
                               color: isSender ? Colors.white : Colors.black,
@@ -563,7 +527,7 @@ class _ChattingPageState extends State<ChattingPage> {
                           ),
                         ],
                       ),
-                      if (message.isFavorite)
+                      if (message['isStarMark'] == true)
                         Icon(Icons.star, color: Colors.yellow[700], size: 20),
                     ],
                   ),
@@ -576,7 +540,7 @@ class _ChattingPageState extends State<ChattingPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            "${message.sender} • ${_formatTimestamp(message.timestamp)}",
+            "${message['name']} • ${_formatTimestamp(DateTime.parse(message['timestamp']))}",
             style: TextStyle(color: greyColor, fontSize: 12),
           ),
         ),
@@ -584,7 +548,7 @@ class _ChattingPageState extends State<ChattingPage> {
     );
   }
 
-  Widget _buildTextMessageBubble(Message message, {required bool isSender}) {
+  Widget _buildTextMessageBubble(dynamic message, {required bool isSender}) {
     return Column(
       crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
@@ -605,14 +569,14 @@ class _ChattingPageState extends State<ChattingPage> {
                   children: [
                     Flexible(
                       child: Text(
-                        message.content,
+                        message['text'] ?? '',
                         style: TextStyle(
                           color: isSender ? Colors.white : Colors.black,
                           fontSize: normalFontSize - 2,
                         ),
                       ),
                     ),
-                    if (message.isFavorite)
+                    if (message['isStarMark'] == true)
                       const Padding(
                         padding: EdgeInsets.only(left: 8),
                         child: Icon(Icons.star, color: Colors.yellow, size: 16),
@@ -627,7 +591,7 @@ class _ChattingPageState extends State<ChattingPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            "${message.sender} • ${_formatTimestamp(message.timestamp)}",
+            "${message['name']} • ${_formatTimestamp(DateTime.parse(message['timestamp']))}",
             style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
         ),
@@ -639,13 +603,14 @@ class _ChattingPageState extends State<ChattingPage> {
     return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildMessagePopupMenu(Message message) {
-    final canDelete = message.sender == currentUserId;
+  Widget _buildMessagePopupMenu(dynamic message) {
+    final canDelete = message['userId'] == userId;
+    final hasFile = message['fileName'] != null;
 
     return PopupMenuButton<int>(
       icon: Icon(Icons.more_vert, color: Colors.grey[500]),
       itemBuilder: (context) => [
-        if (message.isFile)
+        if (hasFile)
           PopupMenuItem(
             value: 3,
             child: Row(
@@ -661,11 +626,11 @@ class _ChattingPageState extends State<ChattingPage> {
           child: Row(
             children: [
               Icon(
-                message.isFavorite ? Icons.star : Icons.star_border,
-                color: message.isFavorite ? Colors.yellow : Colors.grey,
+                message['isStarMark'] == true ? Icons.star : Icons.star_border,
+                color: message['isStarMark'] == true ? Colors.yellow : Colors.grey,
               ),
               const SizedBox(width: 8),
-              Text(message.isFavorite ? "Unfavorite" : "Favorite"),
+              Text(message['isStarMark'] == true ? "Unfavorite" : "Favorite"),
             ],
           ),
         ),

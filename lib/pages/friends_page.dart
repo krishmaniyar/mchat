@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mchat/models/chat_api_service.dart';
 import '../models/auth_handler.dart';
 import 'chatting_page.dart';
 
@@ -11,7 +12,7 @@ class FriendsPage extends StatefulWidget {
 
 class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController searchController = TextEditingController();
-  List<String> users = [];
+  List<Map<String, dynamic>> users = [];
   bool isLoading = true;
   String? currentUser;
 
@@ -24,13 +25,20 @@ class _FriendsPageState extends State<FriendsPage> {
   Future<void> _loadData() async {
     setState(() => isLoading = true);
     try {
-      currentUser = await AuthHandler.getCurrentUser();
-      final allUsers = await AuthHandler.getAllUsers();
-      users = allUsers.where((user) => user != currentUser).toList();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: ${e.toString()}')),
+      currentUser = await AuthHandler.getUserName();
+      final response = await ChatApiService.getFriends(
+        await AuthHandler.getUserId(),
+        await AuthHandler.getGuid(),
       );
+      if (response != null) {
+        users = List<Map<String, dynamic>>.from(response as Iterable);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: ${e.toString()}')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -38,11 +46,16 @@ class _FriendsPageState extends State<FriendsPage> {
     }
   }
 
-  void _startChat(String contactName) {
+  void _startChat(Map<String, dynamic> user) {
+    print(user['userName']);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChattingPage(contactName: contactName, isGroup: false),
+        builder: (context) => ChattingPage(
+          contactName: user['userName'],
+          isGroup: false,
+          chatId: user['userId'],
+        ),
       ),
     );
   }
@@ -72,7 +85,7 @@ class _FriendsPageState extends State<FriendsPage> {
     final buttonBorderRadius = screenWidth * 0.025;
 
     final filteredUsers = users.where((user) =>
-        user.toLowerCase().contains(searchController.text.toLowerCase())
+        user['userName'].toLowerCase().contains(searchController.text.toLowerCase())
     ).toList();
 
     return Scaffold(
@@ -128,7 +141,9 @@ class _FriendsPageState extends State<FriendsPage> {
                 Center(child: CircularProgressIndicator())
               else if (filteredUsers.isEmpty)
                 Center(child: Text(
-                    "No users found",
+                    searchController.text.isEmpty
+                        ? "No friends available"
+                        : "No matching friends found",
                     style: TextStyle(fontSize: normalFontSize)
                 ))
               else
@@ -138,9 +153,7 @@ class _FriendsPageState extends State<FriendsPage> {
                     itemBuilder: (context, index) {
                       final user = filteredUsers[index];
                       return GestureDetector(
-                        onTap: () => {
-                          _startChat(user)
-                        },
+                        onTap: () => _startChat(user),
                         child: Container(
                           padding: EdgeInsets.symmetric(
                             vertical: containerPaddingVertical,
@@ -163,7 +176,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                     radius: avatarRadius,
                                     backgroundColor: Colors.blue[200],
                                     child: Text(
-                                      user[0].toUpperCase(),
+                                      user['userName'][0].toUpperCase(),
                                       style: TextStyle(
                                         color: Colors.blue[800],
                                         fontSize: normalFontSize,
@@ -181,7 +194,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                           color: Colors.white,
                                         ),
                                         borderRadius: BorderRadius.circular(statusIndicatorSize),
-                                        color: index == 0 ? Colors.green : Colors.red,
+                                        color: user['status'] == 1 ? Colors.green : Colors.red,
                                       ),
                                     ),
                                   ),
@@ -193,14 +206,14 @@ class _FriendsPageState extends State<FriendsPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      user,
+                                      user['userName'],
                                       style: TextStyle(
                                         fontSize: normalFontSize,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                     Text(
-                                      index == 0 ? "online" : "offline",
+                                      user['status'] == 1 ? "online" : "offline",
                                       style: TextStyle(
                                         fontSize: smallFontSize,
                                       ),
@@ -238,34 +251,6 @@ class _FriendsPageState extends State<FriendsPage> {
                     },
                   ),
                 ),
-              SizedBox(height: verticalPaddingLarge),
-              // ElevatedButton(
-              //   style: ButtonStyle(
-              //     backgroundColor: WidgetStateProperty.all<Color>(blueColor!),
-              //     shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-              //       RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(buttonBorderRadius),
-              //       ),
-              //     ),
-              //   ),
-              //   onPressed: () {},
-              //   child: Center(
-              //     child: Padding(
-              //       padding: EdgeInsets.symmetric(
-              //         vertical: screenHeight * 0.0125,
-              //         horizontal: screenWidth * 0.0375,
-              //       ),
-              //       child: Text(
-              //         "Add Friends",
-              //         style: TextStyle(
-              //           fontSize: boldFontSize - 3,
-              //           fontWeight: FontWeight.w500,
-              //           color: Colors.white,
-              //         ),
-              //       ),
-              //     ),
-              //   ),
-              // ),
             ],
           ),
         ),

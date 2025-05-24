@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/auth_handler.dart';
+import '../models/chat_api_service.dart';
 import '../models/json_handler.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -12,6 +13,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController searchController = TextEditingController();
   String? currentUserId;
+  String? currentUserEmail;
   bool _isProcessing = false;
 
   @override
@@ -21,7 +23,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadCurrentUser() async {
-    currentUserId = await AuthHandler.getCurrentUser();
+    currentUserId = await AuthHandler.getUserName();
+    currentUserEmail = await AuthHandler.getEmail();
     if (mounted) setState(() {});
   }
 
@@ -30,47 +33,36 @@ class _SettingsPageState extends State<SettingsPage> {
     await _deleteAllDirectChats();
   }
 
-  Future<void> _deleteAllDirectChats() async {
-    if (currentUserId == null || _isProcessing) return;
-
-    setState(() => _isProcessing = true);
+  Future<void> deleteCurrentUserMessages(int isDirect) async {
     try {
-      final allUsers = await AuthHandler.getAllUsers();
-      final otherUsers = allUsers.where((user) => user != currentUserId).toList();
-
-      // Delete direct chats
-      await Future.wait(otherUsers.map((user) async {
-        await JsonHandler.clearDirectMessages(currentUserId!, user);
-      }));
-
-      _showSuccessSnackbar('All Direct chats deleted successfully');
+      final currentUserId = await AuthHandler.getUserId();
+      final chats = await ChatApiService.getChatList(currentUserId, isDirect);
+      for(Map<String, dynamic> chat in chats) {
+        List messages = await ChatApiService.getChatMessages(chat['chatId']);
+        for (Map<String, dynamic> message in messages) {
+          if (message['userId'] == currentUserId) {
+            print(message['uid']);
+            await ChatApiService.deleteMessage(
+              message['chatId'],
+              message['messageId'],
+              message['userId'],
+              message['uid'],
+            );
+          }
+        }
+      }
     } catch (e) {
-      _showErrorSnackbar('Failed to delete chats: ${e.toString()}');
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      print('Error deleting user messages: $e');
+      throw Exception('Failed to delete user messages: $e');
     }
   }
 
+  Future<void> _deleteAllDirectChats() async {
+    deleteCurrentUserMessages(1);
+  }
+
   Future<void> _deleteAllGroupChats() async {
-    if (currentUserId == null || _isProcessing) return;
-
-    setState(() => _isProcessing = true);
-    try {
-      final allUsers = await AuthHandler.getAllUsers();
-      final otherUsers = allUsers.where((user) => user != currentUserId).toList();
-
-      // Delete group chats
-      final userGroups = await AuthHandler.getUserGroups(currentUserId!);
-      await Future.wait(userGroups.map((group) =>
-          JsonHandler.clearGroupMessages(group)
-      ));
-
-      _showSuccessSnackbar('All Group chats deleted successfully');
-    } catch (e) {
-      _showErrorSnackbar('Failed to delete group chats: ${e.toString()}');
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
-    }
+    deleteCurrentUserMessages(0);
   }
 
   Future<void> _logout() async {
@@ -227,9 +219,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          if (currentUserId != null)
+                          if (currentUserEmail != null)
                             Text(
-                              currentUserId!,
+                              currentUserEmail!,
                               style: TextStyle(
                                 fontSize: smallFontSize,
                               ),
